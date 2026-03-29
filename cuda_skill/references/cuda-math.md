@@ -55,7 +55,7 @@ grep -A 10 "__fmaf_rn\b" cuda-math-docs/modules/group__cuda__math__intrinsic__si
 grep "^__device__ float " cuda-math-docs/modules/group__cuda__math__single.md | head -20
 ```
 
-### Half-precision (__half / __half2) operations
+### Half-precision (**half/**half2) operations
 
 ```bash
 # All __half arithmetic functions
@@ -113,18 +113,18 @@ grep "^__device__" cuda-math-docs/modules/group__cuda__math__intrinsic__simd.md 
 
 For each precision level CUDA offers two function sets:
 
-| Level | Module | Accuracy | Speed |
-| --- | --- | --- | --- |
-| Standard single | `group__cuda__math__single.md` | IEEE 754 compliant | slower |
-| Intrinsic single | `group__cuda__math__intrinsic__single.md` | ~1 ULP, device-specific | faster (`__expf`, `__logf`) |
-| Standard double | `group__cuda__math__double.md` | IEEE 754 compliant | slower |
-| Intrinsic double | `group__cuda__math__intrinsic__double.md` | reduced precision | faster (`__drcp_rn`, `__dsqrt_rn`) |
+| Level            | Module                                    | Accuracy                | Speed                              |
+| ---------------- | ----------------------------------------- | ----------------------- | ---------------------------------- |
+| Standard single  | `group__cuda__math__single.md`            | IEEE 754 compliant      | slower                             |
+| Intrinsic single | `group__cuda__math__intrinsic__single.md` | ~1 ULP, device-specific | faster (`__expf`, `__logf`)        |
+| Standard double  | `group__cuda__math__double.md`            | IEEE 754 compliant      | slower                             |
+| Intrinsic double | `group__cuda__math__intrinsic__double.md` | reduced precision       | faster (`__drcp_rn`, `__dsqrt_rn`) |
 
 **Rule of thumb for vLLM kernels:** Use intrinsic (`__expf`, `__logf`) for attention softmax and activation functions where small accuracy loss is acceptable. Use standard `expf`/`logf` for critical accumulation paths.
 
 ## Documentation Structure
 
-```
+```text
 cuda-math-docs/
 ├── modules/                                           # 14 files
 │   ├── group__cuda__math__single.md                  # 6. Single Precision Mathematical Functions
@@ -160,16 +160,16 @@ cuda-math-docs/
 
 ## Narrow-Precision Type Guide
 
-| Type | File | Format | Use case |
-| --- | --- | --- | --- |
-| `__nv_fp8_e4m3` | `struct____nv__fp8__e4m3.md` | 1s + 4e + 3m | Weights/activations (forward pass) |
-| `__nv_fp8_e5m2` | `struct____nv__fp8__e5m2.md` | 1s + 5e + 2m | Gradients (wider range) |
-| `__nv_fp8_e8m0` | `struct____nv__fp8__e8m0.md` | 8e (no mantissa) | MX block scale factors |
-| `__nv_fp6_e2m3` | `struct____nv__fp6__e2m3.md` | 1s + 2e + 3m | Ultra-low-precision activations |
-| `__nv_fp6_e3m2` | `struct____nv__fp6__e3m2.md` | 1s + 3e + 2m | Ultra-low-precision weights |
-| `__nv_fp4_e2m1` | `struct____nv__fp4__e2m1.md` | 1s + 2e + 1m | MX FP4 block format |
-| `__half` | `struct____half.md` | FP16 | Standard half-precision |
-| `__nv_bfloat16` | `struct____nv__bfloat16.md` | BF16 | Training (wider range than FP16) |
+| Type            | File                         | Format           | Use case                           |
+| --------------- | ---------------------------- | ---------------- | ---------------------------------- |
+| `__nv_fp8_e4m3` | `struct____nv__fp8__e4m3.md` | 1s + 4e + 3m     | Weights/activations (forward pass) |
+| `__nv_fp8_e5m2` | `struct____nv__fp8__e5m2.md` | 1s + 5e + 2m     | Gradients (wider range)            |
+| `__nv_fp8_e8m0` | `struct____nv__fp8__e8m0.md` | 8e (no mantissa) | MX block scale factors             |
+| `__nv_fp6_e2m3` | `struct____nv__fp6__e2m3.md` | 1s + 2e + 3m     | Ultra-low-precision activations    |
+| `__nv_fp6_e3m2` | `struct____nv__fp6__e3m2.md` | 1s + 3e + 2m     | Ultra-low-precision weights        |
+| `__nv_fp4_e2m1` | `struct____nv__fp4__e2m1.md` | 1s + 2e + 1m     | MX FP4 block format                |
+| `__half`        | `struct____half.md`          | FP16             | Standard half-precision            |
+| `__nv_bfloat16` | `struct____nv__bfloat16.md`  | BF16             | Training (wider range than FP16)   |
 
 ## Search Tips
 
