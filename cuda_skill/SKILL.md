@@ -1,6 +1,6 @@
 ---
 name: cuda
-description: "CUDA kernel development, debugging, and performance optimization for Claude Code. Use when writing, debugging, or optimizing CUDA code, GPU kernels, or parallel algorithms. Covers non-interactive profiling with nsys/ncu, debugging with cuda-gdb/compute-sanitizer, binary inspection with cuobjdump, and performance analysis workflows. Triggers on CUDA, GPU programming, kernel optimization, nsys, ncu, cuda-gdb, compute-sanitizer, PTX, GPU profiling, parallel performance."
+description: "CUDA kernel development, debugging, performance optimization, linear algebra, and multi-GPU communication for Claude Code. Use when writing, debugging, or optimizing CUDA code, GPU kernels, parallel algorithms, or CUDA library calls. Covers cuBLAS/cuBLASLt GEMM operations, CUDA Math API (half, bfloat16, FP8, FP6, FP4), NCCL multi-GPU collectives, non-interactive profiling with nsys/ncu, debugging with cuda-gdb/compute-sanitizer, binary inspection with cuobjdump, and performance analysis workflows. Triggers on CUDA, GPU programming, kernel optimization, nsys, ncu, cuda-gdb, compute-sanitizer, PTX, GPU profiling, parallel performance, cuBLAS, cublasLtMatmul, GEMM, GemmEx, FP8, bfloat16, half precision, __half, __nv_bfloat16, cublasGemmEx, cublasGemmStridedBatchedEx, NCCL, ncclAllReduce, ncclReduceScatter, ncclAllGather, ncclCommInitRank, tensor parallel, pipeline parallel, all-reduce, vLLM CUDA kernels."
 ---
 
 # CUDA Programming Skill
@@ -22,15 +22,19 @@ description: "CUDA kernel development, debugging, and performance optimization f
 1. **Reproduce minimally** — Isolate the failing kernel with smallest possible input
 2. **Add printf** — Before any tool, add `printf` in device code to trace execution
 3. **Run compute-sanitizer** — Catch memory errors non-interactively:
+
    ```bash
    compute-sanitizer --tool memcheck ./your_program
    compute-sanitizer --tool racecheck ./your_program  # for race conditions
    compute-sanitizer --tool initcheck ./your_program  # uninitialized memory
    ```
+
 4. **If still stuck**, try cuda-gdb non-interactively for backtrace:
+
    ```bash
    cuda-gdb -batch -ex "run" -ex "bt" ./your_program
    ```
+
 5. **When tools fail** — Minimize the diff between working and broken code. Read it. The bug is in the diff.
 
 ### printf in Device Code
@@ -49,6 +53,7 @@ __global__ void myKernel(float* data, int n) {
 ```
 
 **Key patterns:**
+
 - Guard with `if (idx == 0)` or `if (idx < N)` to avoid output flood
 - Print at kernel entry to confirm launch
 - Print intermediate values at suspected failure points
@@ -56,7 +61,7 @@ __global__ void myKernel(float* data, int n) {
 
 ### compute-sanitizer Quick Reference
 
-**Common gotcha:** "Invalid __shared__ write... out of bounds" usually means insufficient dynamic shared memory allocation in the kernel launch, not wrong array indexing. Check `<<<grid, block, smem_size>>>`.
+**Common gotcha:** "Invalid **shared** write... out of bounds" usually means insufficient dynamic shared memory allocation in the kernel launch, not wrong array indexing. Check `<<<grid, block, smem_size>>>`.
 
 ```bash
 # Memory errors (most common)
@@ -76,6 +81,7 @@ cuda-gdb -batch -ex "run" -ex "bt" ./program
 ```
 
 **Compile with debug info:**
+
 ```bash
 nvcc -g -G -lineinfo program.cu -o program
 ```
@@ -166,15 +172,15 @@ nvtxRangePop();
 
 ### Common Performance Patterns
 
-| Symptom | Likely Cause | Investigation |
-|---------|--------------|---------------|
-| Low GPU utilization | Kernel launch overhead, CPU bottleneck | nsys timeline, look for gaps |
-| Memory bound | Poor access patterns, low cache hit | ncu memory section, check coalescing |
-| Compute bound but slow | Low occupancy, register pressure | ncu occupancy, reduce registers |
-| Lots of small kernels | Launch overhead dominates | nsys timeline, consider fusion |
-| High memcpy time | Excessive H2D/D2H transfers | nsys cuda_gpu_mem, batch transfers |
-| Most cycles stalled | Bank conflicts, memory stalls | ncu SchedulerStatistics, check shared memory |
-| High sectors/request | Poor coalescing (>4 sectors/req) | ncu memory metrics, use vectorized loads |
+| Symptom                | Likely Cause                           | Investigation                                |
+| ---------------------- | -------------------------------------- | -------------------------------------------- |
+| Low GPU utilization    | Kernel launch overhead, CPU bottleneck | nsys timeline, look for gaps                 |
+| Memory bound           | Poor access patterns, low cache hit    | ncu memory section, check coalescing         |
+| Compute bound but slow | Low occupancy, register pressure       | ncu occupancy, reduce registers              |
+| Lots of small kernels  | Launch overhead dominates              | nsys timeline, consider fusion               |
+| High memcpy time       | Excessive H2D/D2H transfers            | nsys cuda_gpu_mem, batch transfers           |
+| Most cycles stalled    | Bank conflicts, memory stalls          | ncu SchedulerStatistics, check shared memory |
+| High sectors/request   | Poor coalescing (>4 sectors/req)       | ncu memory metrics, use vectorized loads     |
 
 **Critical traps:** Bank conflicts and memory coalescing issues often dominate performance but aren't obvious without profiling. See `references/performance-traps.md` for detailed diagnosis and fixes.
 
@@ -211,20 +217,79 @@ nvcc program.cu -lnvToolsExt -o program
 Complete reference documentation available for grep-based search:
 
 **PTX ISA 9.1** — `references/ptx-docs/` (405 files, 2.3MB)
+
 - Search guide: `references/ptx-isa.md`
 - Use for: Instruction-level optimization, inline PTX, TensorCore operations (WMMA, WGMMA, TMA), memory swizzling
 
 **CUDA Runtime API 13.1** — `references/cuda-runtime-docs/` (107 files, 0.9MB)
+
 - Search guide: `references/cuda-runtime.md`
 - Use for: Error codes, API parameters, device properties (`cudaDeviceProp`), memory management, stream behavior
 
 **CUDA Driver API 13.1** — `references/cuda-driver-docs/` (128 files, 0.8MB)
+
 - Search guide: `references/cuda-driver.md`
 - Use for: Context management (`cuCtxCreate`), module loading (`cuModuleLoad`), virtual memory, Driver errors (`CUDA_ERROR_*`), advanced features
+
+**cuBLAS 13.2** — `references/cublas-docs/` (319 files, 2.9MB)
+
+- Search guide: `references/cublas.md`
+- Chapters: `1-introduction/`, `2-using-the-cublas-api/`, `3-using-the-cublaslt-api/`, `4-using-the-cublasxt-api/`
+- Use for: GEMM operations (`cublas<t>gemm`, `cublasGemmEx`), cuBLASLt fused GEMM with custom epilogues (`cublasLtMatmul`), FP8/BF16 narrow-precision GEMM, batched GEMM, matrix layouts and data types
+- Key files:
+  - `2-using-the-cublas-api/2.7-cublas-level-3-function-reference.md` — GEMM, TRSM, SYMM, SYRK
+  - `3-using-the-cublaslt-api/3.4-cublaslt-api-reference.md` — cublasLtMatmul and all Lt descriptors
+  - `3-using-the-cublaslt-api/3.3-cublaslt-datatypes-reference.md` — cublasLtEpilogue_t, layout attributes
+  - `2-using-the-cublas-api/2.8-blas-like-extension.md` — GemmEx, GemmBatchedEx, GemmStridedBatchedEx
+
+**CUDA Math API** — `references/cuda-math-docs/` (40 files, 0.4MB)
+
+- Search guide: `references/cuda-math.md`
+- Modules: `modules/` (14 files) — single/double precision, intrinsics for half, bfloat16, FP8, FP6, FP4, SIMD, cast, integer
+- Data structures: `data-structures/` (26 files) — `__half`, `__half2`, `__nv_bfloat16`, `__nv_fp8_e4m3`, `__nv_fp8_e5m2`, `__nv_fp6_*`, `__nv_fp4_*`
+- Use for: Device math functions (`sinf`, `__expf`, `__fmaf_rn`), narrow-precision type layouts (FP8/FP6/FP4 E2M1/E2M3/E3M2/E4M3/E5M2/E8M0), half/bfloat16 arithmetic intrinsics, SIMD byte/short operations
+- Key files:
+  - `modules/group__cuda__math__single.md` — standard single-precision math functions
+  - `modules/group__cuda__math__intrinsic__fp8.md` — FP8 conversion and arithmetic
+  - `modules/group__cuda__math__intrinsic__half.md` — `__half` arithmetic operations
+  - `modules/group__cuda__math__intrinsic__bfloat16.md` — `__nv_bfloat16` operations
+
+**NCCL** — `references/nccl-docs/` (33 files, 0.5MB)
+
+- Search guide: `references/nccl.md`
+- Structure: `usage/` (13 files — communicators, collectives, streams, P2P, CUDA graphs), `api/` (12 files — colls, comms, p2p, types, device API), top-level guides (overview, env, troubleshooting, examples, mpi)
+- Use for: `ncclAllReduce` / `ncclReduceScatter` / `ncclAllGather` signatures, communicator setup (`ncclCommInitRank`, `ncclGetUniqueId`), P2P send/recv for pipeline parallel, environment variable tuning (`NCCL_DEBUG`, `NCCL_ALGO`, `NCCL_IB_*`), device-initiated communication (GIN)
+- Key files:
+  - `api/colls.md` — all collective function signatures
+  - `api/comms.md` — communicator creation and management
+  - `api/types.md` — `ncclDataType_t`, `ncclResult_t`, `ncclRedOp_t`
+  - `env.md` — full environment variable reference
+  - `troubleshooting.md` — hang diagnosis patterns
 
 Each search guide contains grep examples, documentation structure, and common usage patterns.
 
 **Search strategy:** Use grep/ripgrep to search directly in the `*-docs/` directories. The search guides (`.md` files) provide navigation patterns and common queries.
+
+```bash
+# cuBLAS search examples
+grep -r "cublasGemmEx" references/cublas-docs/
+grep -r "cublasLtMatmul" references/cublas-docs/3-using-the-cublaslt-api/
+grep -r "CUBLAS_COMPUTE_" references/cublas-docs/          # compute types
+grep -r "CUBLASLT_EPILOGUE_" references/cublas-docs/       # epilogue options (bias, ReLU, GELU)
+grep -r "FP8\|fp8\|E4M3\|E5M2" references/cublas-docs/    # FP8 narrow precision
+
+# CUDA Math API search examples
+grep -r "__expf\|__logf\|__sinf" references/cuda-math-docs/   # fast intrinsics
+grep -r "__nv_fp8_e4m3\|__nv_fp8_e5m2" references/cuda-math-docs/  # FP8 types
+grep -r "__half2\|__hadd\|__hmul" references/cuda-math-docs/        # half precision
+grep -r "__nv_bfloat16" references/cuda-math-docs/                  # bfloat16 ops
+
+# NCCL search examples
+grep -r "ncclAllReduce" references/nccl-docs/api/
+grep -r "ncclFloat16\|ncclBfloat16" references/nccl-docs/api/types.md  # FP16/BF16 support
+grep -r "ncclGroupStart\|ncclGroupEnd" references/nccl-docs/           # group calls
+grep -r "^## NCCL_" references/nccl-docs/env.md                        # env vars
+```
 
 ## Additional References
 

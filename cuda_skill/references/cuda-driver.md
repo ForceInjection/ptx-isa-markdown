@@ -19,6 +19,7 @@
 **Complete CUDA Driver API 13.1 documentation is available locally at `cuda-driver-docs/`**
 
 The documentation has been converted to markdown with:
+
 - ✅ All function signatures, parameters, and return values preserved
 - ✅ 128 files organized by module and data structures (0.8 MB)
 - ✅ Full searchability with grep/ripgrep
@@ -80,14 +81,14 @@ ls cuda-driver-docs/modules/*va*.md
 
 **Answer**: Complete virtual memory API including cuMemMap, cuMemAddressReserve, cuMemCreate for fine-grained control.
 
-### Find CUdeviceptr vs void* Differences
+### Find CUdeviceptr vs void\* Differences
 
 ```bash
 # Search for device pointer documentation
 grep -r "CUdeviceptr" cuda-driver-docs/modules/group__cuda__types.md
 ```
 
-**Answer**: Driver API uses CUdeviceptr (unsigned integer) vs Runtime API's void* pointers.
+**Answer**: Driver API uses CUdeviceptr (unsigned integer) vs Runtime API's void\* pointers.
 
 ## Driver API vs Runtime API
 
@@ -97,12 +98,14 @@ grep -r "CUdeviceptr" cuda-driver-docs/modules/group__cuda__types.md
 - **Driver API** (`cuXxx`) — Lower-level, multi-context, explicit initialization required
 
 **When to use Driver API:**
+
 - Need explicit context control (multiple devices, context sharing)
 - Loading PTX/CUBIN modules at runtime
 - Building tools/libraries that need low-level control
 - Interoperating with graphics APIs
 
 **When to use Runtime API:**
+
 - Standard CUDA programming (99% of use cases)
 - Single-context applications
 - Simpler API with less boilerplate
@@ -143,26 +146,29 @@ cuda-driver-docs/
 
 The following files contain extensive API documentation:
 
-1. **group__cuda__mem.md** (715 KB) — Complete memory management API
-2. **group__cuda__graph.md** (370 KB) — CUDA graph programming
-3. **group__cuda__types.md** (242 KB) — All type definitions and enums
-4. **group__cuda__ctx.md** (119 KB) — Context management
-5. **group__cuda__stream.md** (120 KB) — Stream operations
-6. **group__cuda__exec.md** (115 KB) — Kernel execution control
+1. **group**cuda**mem.md** (715 KB) — Complete memory management API
+2. **group**cuda**graph.md** (370 KB) — CUDA graph programming
+3. **group**cuda**types.md** (242 KB) — All type definitions and enums
+4. **group**cuda**ctx.md** (119 KB) — Context management
+5. **group**cuda**stream.md** (120 KB) — Stream operations
+6. **group**cuda**exec.md** (115 KB) — Kernel execution control
 
 ## Search Tips
 
 1. **Function names**: Driver API uses `cuXxx` (camelCase after cu)
+
    ```bash
    grep "cuMemAlloc" cuda-driver-docs/modules/group__cuda__mem.md
    ```
 
 2. **Error codes**: Start with `CUDA_ERROR_`
+
    ```bash
    grep -r "CUDA_ERROR_LAUNCH_FAILED" cuda-driver-docs/
    ```
 
 3. **Types**: Start with `CU` (e.g., CUdevice, CUcontext, CUstream)
+
    ```bash
    grep "CUcontext" cuda-driver-docs/modules/group__cuda__types.md
    ```
@@ -228,16 +234,19 @@ grep "cuGraphLaunch" cuda-driver-docs/modules/group__cuda__graph.md
 ## Troubleshooting
 
 ### "CUDA_ERROR_NOT_INITIALIZED"
+
 - Search: `grep "CUDA_ERROR_NOT_INITIALIZED" cuda-driver-docs/`
 - **Cause**: cuInit() was not called
 - **Fix**: Call cuInit(0) before any Driver API calls
 
 ### "CUDA_ERROR_INVALID_CONTEXT"
+
 - Search: `grep "CUDA_ERROR_INVALID_CONTEXT" cuda-driver-docs/`
 - **Cause**: No context is current or context was destroyed
 - **Fix**: Use cuCtxPushCurrent() or cuCtxSetCurrent()
 
 ### "CUDA_ERROR_LAUNCH_FAILED"
+
 - Search: `grep "CUDA_ERROR_LAUNCH_FAILED" cuda-driver-docs/`
 - **Cause**: Kernel launch error (many possible reasons)
 - **Fix**: Check kernel parameters, shared memory size, register usage

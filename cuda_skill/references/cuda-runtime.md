@@ -20,6 +20,7 @@
 **Complete CUDA Runtime API 13.1 documentation is available locally at `cuda-runtime-docs/`**
 
 The documentation has been converted to markdown with:
+
 - ✅ All function signatures, parameters, and return values preserved
 - ✅ 107 files organized by module and data structures (0.9 MB)
 - ✅ Full searchability with grep/ripgrep
@@ -247,31 +248,37 @@ Modules are organized by functional area:
 ## Common Questions Answered
 
 ### "What error code is -1?"
+
 ```bash
 grep -r "cudaError" cuda-runtime-docs/modules/group__cudart__error.md | grep -- "-1\|enum"
 ```
 
 ### "What does cudaMemcpyAsync do differently?"
+
 ```bash
 grep -A 20 "cudaMemcpyAsync" cuda-runtime-docs/modules/group__cudart__memory.md
 ```
 
 ### "What fields are in cudaDeviceProp?"
+
 ```bash
 cat cuda-runtime-docs/data-structures/structcudadeviceprop.md
 ```
 
 ### "How do I create a stream?"
+
 ```bash
 grep -A 10 "cudaStreamCreate" cuda-runtime-docs/modules/group__cudart__stream.md
 ```
 
 ### "What's the default context?"
+
 ```bash
 grep -ri "primary context\|default context" cuda-runtime-docs/modules/
 ```
 
 ### "What memory functions are async?"
+
 ```bash
 grep -r "cudaMemcpyAsync\|cudaMallocAsync\|cudaFreeAsync" cuda-runtime-docs/modules/
 ```

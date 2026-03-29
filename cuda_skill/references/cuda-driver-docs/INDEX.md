@@ -1,7 +1,7 @@
 # CUDA Driver API Documentation Index
 
-**Total modules:** 49  
-**Total data structures:** 79  
+**Modules:** 49  
+**Data structures:** 79  
 
 ## Modules
 
