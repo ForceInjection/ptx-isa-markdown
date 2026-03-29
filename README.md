@@ -1,527 +1,76 @@
-# NVIDIA CUDA Documentation + AI IDE Skill
+# CUDA 代码技能库
 
-NVIDIA's PTX ISA 9.1, CUDA Runtime API 13.1, CUDA Driver API 13.1, CUDA Math API 13.x, cuBLAS 13.2, and NCCL documentation converted to searchable markdown, with an AI IDE skill (supports Claude Code, Trae, etc.) for GPU development and LLM inference optimization.
-
-## What's Here
-
-1. **PTX ISA 9.1 Documentation** (405 markdown files, 2.3MB)
-   - Complete instruction set reference
-   - All tables, code blocks, and mathematical notation preserved
-   - Organized by chapter with section numbers
-   - Images linked to NVIDIA's CDN
-
-2. **CUDA Runtime API 13.1 Documentation** (104 markdown files, 1.2MB)
-   - Complete function and data structure reference
-   - 37 API modules (device, memory, streams, events, graphs, etc.)
-   - 66 data structures (cudaDeviceProp, cudaMemcpy3DParms, etc.)
-   - All parameters, return values, and detailed descriptions
-   - Navigation, duplicate content, redundant URLs, and boilerplate removed
-
-3. **CUDA Driver API 13.1 Documentation** (129 markdown files, 1.2MB)
-   - Complete low-level driver API reference
-   - 49 API modules (context, module loading, virtual memory, graphs, etc.)
-   - 79 data structures (CUdevice, CUcontext, launch parameters, etc.)
-   - All parameters, return values, and detailed descriptions
-   - Navigation, duplicate TOC, cross-references, and redundant URLs removed
-
-4. **CUDA Math API 13.x Documentation** (41 markdown files, 0.5MB)
-   - Complete device math intrinsics reference
-   - 14 API modules (single, double, half, FP8, SIMD, cast, etc.)
-   - 26 data structures (FP8 types, half types, etc.)
-   - Fast intrinsics, narrow-precision types, and type casting functions
-
-5. **cuBLAS 13.2 Documentation** (319 markdown files, 2.9MB)
-   - Complete GEMM, batched ops, cuBLASLt, cuBLASXt, and legacy API reference
-   - Organized by chapter: cuBLAS API, cuBLASLt, cuBLASXt, cuBLASDx, legacy, Fortran bindings
-   - Mixed-precision GEMM (FP8, BF16, FP16), fused epilogues (bias, ReLU, GELU)
-   - All function signatures, parameters, return values, and descriptions
-
-6. **NCCL Documentation** (34 markdown files, 0.5MB)
-   - Complete collective operations, communicator, and P2P API reference
-   - 12 API pages (collectives, communicators, P2P, groups, device ops, types, etc.)
-   - 11 usage guides (multi-node setup, CUDA graph, MPI integration, etc.)
-   - Environment variables, troubleshooting, and migration from NCCL 1
-
-7. **CUDA Development Skill** for Claude Code
-   - PTX instruction lookup and examples
-   - CUDA Runtime & Driver API function reference
-   - CUDA Math intrinsics (fast device math, FP8, half precision)
-   - cuBLAS / cuBLASLt GEMM and batched operations
-   - NCCL collective operations and multi-GPU communication
-   - Profiling workflows (nsys, ncu)
-   - Debugging patterns (compute-sanitizer, cuda-gdb)
-   - TensorCore operation reference (WMMA, WGMMA, TMA)
-
-## Why
-
-NVIDIA's official documentation is:
-
-- **PTX ISA**: A single 5MB HTML page requiring Ctrl+F through megabytes
-- **CUDA Runtime API**: 75+ separate HTML pages requiring multiple clicks
-- **CUDA Driver API**: 130+ separate HTML pages requiring multiple clicks
-- **CUDA Math API**: 40+ separate HTML pages requiring multiple clicks
-- **cuBLAS**: 300+ separate HTML pages across multiple API tiers
-- **NCCL**: Sphinx multi-page site spread across usage, API, and env sections
-
-This conversion enables:
-
-- `grep -r "register fragment" ptx-docs/` instead of Ctrl+F
-- `grep -r "cudaErrorInvalidValue" cuda-runtime-docs/` instead of clicking through modules
-- `grep -r "cuCtxCreate" cuda-driver-docs/` for low-level API lookup
-- `grep -r "cublasGemmEx" cublas-docs/` for cuBLAS GEMM signatures
-- `grep -r "ncclAllReduce" nccl-docs/` for NCCL collective operations
-- `grep -r "__expf\|__fmaf_rn" cuda-math-docs/` for fast device intrinsics
-- Direct file access for AI tools (Claude, Copilot)
-- Offline reference with proper organization
-
-**Example 1**: Find how to disable TMA swizzling:
-
-```bash
-$ grep -r "swizzle_mode.*no swizzling" cuda_skill/references/ptx-docs/
-9.7.9.28-data-movement-and-conversion-instructionstensormapreplace.md:
-  0 | `.u8` | No interleave | No swizzling | 16B | Zero fill
-```
-
-Answer: use `tensormap.replace` with `.swizzle_mode = 0`.
-
-**Example 2**: Look up what cudaErrorInvalidValue means:
-
-```bash
-grep -A 5 "cudaErrorInvalidValue" cuda_skill/references/cuda-runtime-docs/
-```
-
-Answer: Instantly find error code documentation with description and related errors.
-
-**Example 3**: Understand context management in Driver API:
-
-```bash
-grep -A 20 "cuCtxCreate" cuda_skill/references/cuda-driver-docs/modules/group__cuda__ctx.md
-```
-
-Answer: Full cuCtxCreate parameters, return values, and context behavior.
-
-**Example 4**: Look up cuBLAS mixed-precision GEMM:
-
-```bash
-grep -A 30 "cublasGemmEx" cuda_skill/references/cublas-docs/2-using-the-cublas-api/
-```
-
-Answer: Full cublasGemmEx signature with compute type and algorithm options.
-
-**Example 5**: Find NCCL collective operation signatures:
-
-```bash
-grep -A 20 "^## ncclAllReduce" cuda_skill/references/nccl-docs/api/colls.md
-```
-
-Answer: Full ncclAllReduce signature, parameters, and usage notes.
-
-## Structure
-
-```text
-cuda_skill/                              # Portable Claude Code skill (~8.7MB)
-├── SKILL.md                             # Main skill definition
-└── references/
-    ├── ptx-docs/                        # 405 markdown files (2.3MB)
-    │   ├── 9-instruction-set/           # 186 instruction files
-    │   │   ├── 9.7.15.5-*.md           # WGMMA register layouts
-    │   │   └── 9.7.16-*.md             # TensorCore Gen5 (Blackwell)
-    │   ├── 5-state-spaces-types-and-variables/
-    │   ├── 8-memory-consistency-model/
-    │   └── INDEX.md
-    ├── cuda-runtime-docs/               # 104 markdown files (1.2MB)
-    │   ├── modules/                     # 37 API modules
-    │   │   ├── group__cudart__device.md
-    │   │   ├── group__cudart__memory.md
-    │   │   ├── group__cudart__stream.md
-    │   │   └── ...
-    │   ├── data-structures/             # 66 structs/unions
-    │   │   ├── structcudadeviceprop.md
-    │   │   ├── structcudamemcpy3dparms.md
-    │   │   └── ...
-    │   └── INDEX.md
-    ├── cuda-driver-docs/                # 129 markdown files (1.2MB)
-    │   ├── modules/                     # 49 API modules
-    │   │   ├── group__cuda__ctx.md
-    │   │   ├── group__cuda__mem.md
-    │   │   ├── group__cuda__stream.md
-    │   │   ├── group__cuda__module.md
-    │   │   ├── group__cuda__va.md
-    │   │   └── ...
-    │   ├── data-structures/             # 79 structs
-    │   │   ├── structcudevprop__v1.md
-    │   │   ├── structcuda__memcpy3d__v2.md
-    │   │   └── ...
-    │   └── INDEX.md
-    ├── cuda-math-docs/                  # 41 markdown files (0.5MB)
-    │   ├── modules/                     # 14 API modules
-    │   │   ├── group__cuda__math__single.md
-    │   │   ├── group__cuda__math__intrinsic__half.md
-    │   │   ├── group__cuda__math__intrinsic__cast.md
-    │   │   └── ...
-    │   ├── data-structures/             # 26 FP8/half types
-    │   └── INDEX.md
-    ├── cublas-docs/                     # 319 markdown files (2.9MB)
-    │   ├── 1-introduction/
-    │   ├── 2-using-the-cublas-api/      # cublasSgemm, cublasGemmEx, etc.
-    │   ├── 3-using-the-cublaslt-api/    # cublasLtMatmul, epilogues
-    │   ├── 4-using-the-cublasxt-api/
-    │   ├── 5-using-the-cublasdx-api/
-    │   ├── 6-using-the-cublas-legacy-api/
-    │   ├── 7-cublas-fortran-bindings/
-    │   └── 8-interaction-with-other-libraries-and-tools/
-    ├── nccl-docs/                       # 34 markdown files (0.5MB)
-    │   ├── api/                         # 12 API pages (collectives, comms, P2P, etc.)
-    │   ├── usage/                       # 11 usage guides
-    │   ├── troubleshooting/             # RAS subsystem guide
-    │   ├── env.md                       # All NCCL_* environment variables
-    │   ├── api.md                       # API overview
-    │   └── INDEX.md
-    ├── ptx-isa.md                       # PTX search guide and examples
-    ├── cuda-runtime.md                  # Runtime API search guide
-    ├── cuda-driver.md                   # Driver API search guide
-    ├── cuda-math.md                     # Math API search guide
-    ├── cublas.md                        # cuBLAS search guide
-    ├── nccl.md                          # NCCL search guide
-    ├── nsys-guide.md                    # Nsight Systems patterns
-    ├── ncu-guide.md                     # Nsight Compute metrics
-    ├── nvtx-patterns.md                 # NVTX instrumentation patterns
-    ├── performance-traps.md             # Bank conflicts, coalescing, scale traps
-    └── debugging-tools.md               # compute-sanitizer, cuda-gdb
-
-scrape_cuda_docs.py                      # Unified scraper (uv script, all doc types)
-```
-
-## Using the Skill
-
-Install:
-
-```bash
-cp -r cuda_skill ~/.claude/skills/cuda
-```
-
-The skill activates automatically for CUDA work. Ask Claude:
-
-- "What's the register fragment layout for WGMMA m64n16k16?"
-- "How do I disable TMA swizzling?"
-- "What does cudaErrorInvalidValue mean?"
-- "What fields are in cudaDeviceProp?"
-- "How do I create a CUDA context with the Driver API?"
-- "What's the difference between cuMemAlloc and cudaMalloc?"
-- "Profile this kernel with nsys"
-- "What's the signature of cublasGemmEx with FP8?"
-- "How do I set up ncclAllReduce across multiple GPUs?"
-- "What does __fmaf_rn do vs regular fma?"
-
-Claude searches the local documentation and provides answers with section references.
-
-## Search Examples
-
-### PTX ISA
-
-Find WGMMA register fragments:
-
-```bash
-grep -r "register fragment" cuda_skill/references/ptx-docs/9-instruction-set/ | grep -i wgmma
-```
-
-Find all swizzling modes:
-
-```bash
-find cuda_skill/references/ptx-docs -name "*swizzl*"
-```
-
-Search for any instruction:
-
-```bash
-grep -r "mbarrier.init" cuda_skill/references/ptx-docs/
-```
-
-### CUDA Runtime API
-
-Look up error code:
-
-```bash
-grep -A 10 "cudaErrorInvalidValue" cuda_skill/references/cuda-runtime-docs/
-```
-
-Find device properties:
-
-```bash
-cat cuda_skill/references/cuda-runtime-docs/data-structures/structcudadeviceprop.md
-```
-
-### CUDA Driver API
-
-Look up context creation:
-
-```bash
-grep -A 20 "cuCtxCreate" cuda_skill/references/cuda-driver-docs/modules/group__cuda__ctx.md
-```
-
-Find virtual memory management:
-
-```bash
-ls cuda_skill/references/cuda-driver-docs/modules/*va*.md
-cat cuda_skill/references/cuda-driver-docs/modules/group__cuda__va.md
-```
-
-Understand module loading:
-
-```bash
-grep -A 15 "cuModuleLoad" cuda_skill/references/cuda-driver-docs/modules/group__cuda__module.md
-```
-
-Search for stream functions:
-
-```bash
-grep -r "cudaStreamSynchronize" cuda_skill/references/cuda-runtime-docs/
-```
-
-### CUDA Math API
-
-Find fast single-precision intrinsics:
-
-```bash
-grep "^__device__ float __" cuda_skill/references/cuda-math-docs/modules/group__cuda__math__intrinsic__single.md | head -20
-```
-
-Look up FP8 type conversion:
-
-```bash
-cat cuda_skill/references/cuda-math-docs/modules/group__cuda__math__intrinsic__cast.md
-```
-
-Find half-precision math:
-
-```bash
-grep -A 8 "__hfma\b" cuda_skill/references/cuda-math-docs/modules/group__cuda__math__intrinsic__half.md
-```
-
-### cuBLAS
-
-Look up GEMM signatures:
-
-```bash
-grep -r "cublasHgemm\|cublasSgemm\|cublasDgemm" cuda_skill/references/cublas-docs/
-```
-
-Find cublasGemmEx with mixed precision:
-
-```bash
-grep -A 30 "cublasGemmEx\b" cuda_skill/references/cublas-docs/2-using-the-cublas-api/
-```
-
-Look up cuBLASLt fused epilogue:
-
-```bash
-grep -A 20 "cublasLtMatmul\b" cuda_skill/references/cublas-docs/3-using-the-cublaslt-api/
-```
-
-### NCCL
-
-Look up collective operation signatures:
-
-```bash
-grep -A 20 "^## ncclAllReduce" cuda_skill/references/nccl-docs/api/colls.md
-```
-
-Find environment variables for tuning:
-
-```bash
-grep -E "^## NCCL_(ALGO|PROTO|BUFFSIZE)" cuda_skill/references/nccl-docs/env.md
-```
-
-Understand communicator initialization:
-
-```bash
-cat cuda_skill/references/nccl-docs/usage/communicators.md
-```
-
-Debug NCCL issues:
-
-```bash
-grep -A 5 "NCCL_DEBUG" cuda_skill/references/nccl-docs/env.md
-```
-
-## Regenerating
-
-Run the scraper to update from NVIDIA's latest docs:
-
-```bash
-# Update PTX ISA docs
-uv run scrape_cuda_docs.py ptx
-
-# Update CUDA Runtime API docs
-uv run scrape_cuda_docs.py runtime
-
-# Update CUDA Driver API docs
-uv run scrape_cuda_docs.py driver
-
-# Update CUDA Math API docs
-uv run scrape_cuda_docs.py math
-
-# Update cuBLAS docs
-uv run scrape_cuda_docs.py cublas
-
-# Update NCCL docs
-uv run scrape_cuda_docs.py nccl
-
-# Re-run cleanup without re-downloading (uses cached raw files, runtime/driver only)
-uv run scrape_cuda_docs.py driver --skip-download
-
-# Force re-download even if cache exists
-uv run scrape_cuda_docs.py driver --force
-
-# Custom output directory
-uv run scrape_cuda_docs.py ptx --output-dir /path/to/output
-```
-
-All scrapers are unified in a single `uv` script with inline PEP 723 dependencies (no separate install needed).
-
-**PTX scraper**:
-
-- Parses single-page HTML documentation
-- Splits by section into individual markdown files
-- Preserves tables using markdown syntax
-- Converts image references to absolute URLs
-- Maintains section hierarchy
-
-**Runtime API / Driver API scraper**:
-
-- Crawls 75+/130+ module and data structure pages
-- Caches raw files to `*-raw/` directories for fast iteration
-- Automatically runs cleanup to produce final docs
-- Use `--skip-download` to re-run cleanup without re-downloading
-- Navigation, duplicate TOC, redundant URLs, boilerplate removed
-
-**cuBLAS scraper**:
-
-- Sphinx single-page format: scrapes entire doc tree from `index.html`
-- Organized by chapter directories matching the official docs structure
-- 319 files covering all API tiers (cuBLAS, cuBLASLt, cuBLASXt, cuBLASDx, legacy, Fortran)
-
-**NCCL scraper**:
-
-- Sphinx multi-page format: discovers pages from index and toctree links
-- Downloads and organizes into `api/`, `usage/`, and `troubleshooting/` directories
-- Also preserves flat top-level pages (env.md, api.md, examples.md, etc.)
-
-**CUDA Math API scraper**:
-
-- Doxygen multi-page format: crawls `modules.html` and `annotated.html`
-- 14 API modules + 26 data structures, cleanup removes duplicate TOC/boilerplate
-
-**API cleanup process**:
-
-- Removes duplicate function TOC (detailed docs remain)
-- Removes verbose "See also:" cross-references (grep provides same discoverability)
-- Removes anchor links, `[inherited]` tags, zero-width spaces
-- Removes footer (Privacy Policy, Copyright, NVIDIA logo)
-- Removes redundant URLs from markdown links (type/function names preserved)
-- Removes generic boilerplate notes (async errors, initialization errors, callback restrictions)
-- Cleans up excessive whitespace
-
-## Quality
-
-**PTX ISA**: Tables verified against HTML source. Mathematical notation preserved. 1049 images accessible via NVIDIA CDN links.
-
-**CUDA Runtime API**: All 104 pages successfully converted. Function signatures, parameters, return values, and descriptions fully preserved. Navigation, duplicate content, redundant URLs, and formatting noise removed.
-
-**CUDA Driver API**: All 129 pages successfully converted. Function signatures, parameters, return values, and descriptions fully preserved. Duplicate function TOC, verbose "See also" sections, redundant URLs, and formatting noise removed.
-
-**CUDA Math API**: All 41 pages successfully converted. Device intrinsic signatures, FP8/half type constructors, and SIMD operations fully preserved.
-
-**cuBLAS**: All 319 pages successfully converted. Full coverage of cuBLAS, cuBLASLt, cuBLASXt, cuBLASDx, legacy API, and Fortran bindings.
-
-**NCCL**: 34 pages successfully converted. All collective operations, communicator APIs, P2P, environment variables, and troubleshooting guides preserved.
-
-Verification:
-
-- All function parameters documented
-- All return values documented
-- Data structure fields accessible
-- Real-world queries tested and working
-
-Known limitations:
-
-- Cross-file anchor links don't resolve (use grep instead)
-- Images not downloaded locally (fetch from NVIDIA CDN as needed)
-
-## Technical Details
-
-**PTX ISA**:
-
-- Version: 9.1
-- Files: 405 markdown files
-- Size: 2.3 MB
-- Source: https://docs.nvidia.com/cuda/parallel-thread-execution/
-
-**CUDA Runtime API**:
-
-- Version: 13.1
-- Files: 104 markdown files (37 modules + 66 data structures)
-- Size: 1.2 MB
-- Source: https://docs.nvidia.com/cuda/cuda-runtime-api/
-
-**CUDA Driver API**:
-
-- Version: 13.1
-- Files: 129 markdown files (49 modules + 79 data structures)
-- Size: 1.2 MB
-- Source: https://docs.nvidia.com/cuda/cuda-driver-api/
-
-**CUDA Math API**:
-
-- Version: 13.x
-- Files: 41 markdown files (14 modules + 26 data structures)
-- Size: 0.5 MB
-- Source: https://docs.nvidia.com/cuda/cuda-math-api/
-
-**cuBLAS**:
-
-- Version: 13.2
-- Files: 319 markdown files (organized by chapter)
-- Size: 2.9 MB
-- Source: https://docs.nvidia.com/cuda/cublas/index.html
-
-**NCCL**:
-
-- Files: 34 markdown files (api/, usage/, troubleshooting/, flat pages)
-- Size: 0.5 MB
-- Source: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/
-
-**License**: Documentation © NVIDIA Corporation
-
-The skill uses Claude Code's progressive disclosure: `SKILL.md` is always loaded (~13KB), reference files load on-demand, and documentation is searched rather than loaded into context.
-
-**Total skill size**: ~8.7MB (2.3MB PTX + 1.2MB Runtime + 1.2MB Driver + 0.5MB Math + 2.9MB cuBLAS + 0.5MB NCCL + guides)
-
-## Use Cases
-
-- **Low-level CUDA optimization** — Inline PTX, instruction selection
-- **Compiler output understanding** — `cuobjdump -ptx` analysis
-- **TensorCore programming** — WMMA/WGMMA/TMA operations
-- **Runtime API reference** — Error codes, function parameters, struct fields
-- **Driver API reference** — Context management, module loading, virtual memory
-- **Multi-context applications** — Explicit context control with Driver API
-- **PTX/CUBIN module loading** — Dynamic kernel loading at runtime
-- **Advanced memory features** — Virtual memory, multicast, tensor maps
-- **Context and stream debugging** — Understanding CUDA Runtime behavior
-- **Memory management** — Choosing between malloc variants
-- **GEMM optimization** — cuBLAS/cuBLASLt mixed-precision, FP8, batched ops
-- **Multi-GPU communication** — NCCL collectives, P2P, multi-node setup
-- **Device math intrinsics** — Fast single/half-precision math, FP8 types
-- **GPU architecture research**
-- **Training AI models** on CUDA/PTX/Runtime API
+本项目是一个面向 AI IDE（如 Claude Code、Trae、Qoder 等）的 CUDA 内核开发辅助项目，通过结合抓取自 NVIDIA 官方文档的**深度本地知识库**与**基于 Agent 的代码生成技能**，为底层 GPU 开发者提供准确、高效的自动化代码编写与查阅辅助。
 
 ---
 
-Unofficial conversion for convenience. Refer to NVIDIA's official documentation for authoritative reference:
+## 1. 核心特性
 
-- [PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/)
-- [CUDA Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/)
-- [CUDA Driver API](https://docs.nvidia.com/cuda/cuda-driver-api/)
-- [CUDA Math API](https://docs.nvidia.com/cuda/cuda-math-api/)
-- [cuBLAS](https://docs.nvidia.com/cuda/cublas/index.html)
-- [NCCL](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/)
+针对大模型在底层 GPU 编程中易产生幻觉的问题，本项目通过离线知识库与 Agent 技能的深度结合，提供了以下三大技术优势：
+
+- **基于知识增强的代码生成 (RAG)**：操作技能被专门指导去搜索本地的 `cuda-knowledge` 技能，以确保对复杂 API（如 cuBLASLt、Tensor Cores、PTX 等）的准确使用，从而避免 AI 产生幻觉。
+- **全面的离线文档**：包含大量从 NVIDIA HTML 文档转换而来的、支持本地搜索的 Markdown 文件，涵盖了底层开发中最常用的官方参考资料。
+- **文档抓取流水线**：内置了一套完善的文档抓取工具，能够随时同步和更新最新的官方文档内容。
+
+---
+
+## 2. 技能概览和使用
+
+本项目采用多技能单体仓库（Monorepo）的结构进行组织，`skills/` 目录下的各个 Agent 技能不仅可以独立运作，还能相互配合形成一套自动化的性能分析与优化工作流。下面将详细介绍这些技能的作用以及如何在 AI IDE 中进行集成调用。
+
+### 2.1 技能概览
+
+当前已就绪的各项核心技能涵盖了从知识检索、代码生成到性能分析的完整闭环，具体分工如下：
+
+| 技能名称                | 角色     | 描述                                                                                                                     |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **cuda-knowledge**      | 知识基座 | 提供支持搜索的本地文档库（包含来自 NVIDIA 官方文档的 PTX、cuBLAS、Runtime / Driver、Math API、NCCL 等参考资料）。        |
+| **cuda-optimizer**      | 任务编排 | 负责主导核心性能分析与优化循环，负责协调并调度其他专项技能共同完成复杂的优化任务。                                       |
+| **cuda-code-generator** | 代码生成 | 用于生成和修改 `.cu` 代码文件，内置指令要求其在执行时必须查阅 `cuda-knowledge` 以保证 API 的准确性。                     |
+| **ncu-rep-analyzer**    | 性能分析 | 负责解析 NCU（Nsight Compute）性能分析报告，并结合内置的性能陷阱指南（如 `performance-traps.md` ）进行深度的瓶颈诊断。   |
+| **kernel-benchmarker**  | 基准测试 | 负责内核代码的编译、正确性验证与基准测试，当遇到编译或运行错误时会利用调试指南（如 `debugging-tools.md` ）进行自动修复。 |
+
+### 2.2 快速开始
+
+无论是在 Claude Code 还是 Trae 中，本项目提供的技能都可以通过简单的目录加载方式快速接入到日常开发工作流中。
+
+大多数 AI IDE 都支持从目录加载技能。我们可以一次性加载整个目录，或者只选择特定的技能。
+
+**对于 Qoder / Trae / Claude Code：**
+直接将 `skills/` 目录加载为你的工作上下文，或者通过 IDE 提供的技能管理界面安装它们。
+
+加载完成后，你可以直接在对话中通过自然语言提示词要求 Agent 使用对应的技能，例如：
+
+```text
+# 调用代码生成技能并结合本地知识库
+"使用 cuda-code-generator，帮我写一个矩阵转置的 CUDA kernel，并在实现前查阅 cuda-knowledge 中的相关文档。"
+```
+
+---
+
+## 3. 文档抓取工具
+
+[scrape_cuda_docs.py](nvidia_doc_sync/scrape_cuda_docs.py) 是一个采用了统一的单文件设计的脚本，并且针对不同 API 文档支持灵活的抓取与清理策略。
+
+> [!NOTE]
+> 位于 `cuda-knowledge` 中的原始文档是通过自定义的抓取工具生成的。
+
+### 3.1 安装与运行
+
+`scrape_cuda_docs.py` 依赖于 [`uv`](https://docs.astral.sh/uv/) 运行，它是一个包含内联依赖声明（PEP 723）的单文件脚本，无需繁琐的虚拟环境配置。关于如何添加新 API 支持，详细可参阅 [nvidia_doc_sync/README.md](nvidia_doc_sync/README.md) 文件。
+
+```bash
+# 如果尚未安装 uv 工具，请先执行安装
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 抓取各类 CUDA 官方文档
+uv run nvidia_doc_sync/scrape_cuda_docs.py ptx
+uv run nvidia_doc_sync/scrape_cuda_docs.py runtime
+uv run nvidia_doc_sync/scrape_cuda_docs.py driver
+uv run nvidia_doc_sync/scrape_cuda_docs.py cublas
+uv run nvidia_doc_sync/scrape_cuda_docs.py math
+uv run nvidia_doc_sync/scrape_cuda_docs.py nccl
+
+# 跳过网络下载，仅对缓存的原始文件重新运行清理流程
+uv run nvidia_doc_sync/scrape_cuda_docs.py driver --skip-download
+```

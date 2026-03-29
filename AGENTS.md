@@ -4,12 +4,12 @@ This file provides guidance to Qoder (qoder.com) when working with code in this 
 
 ## Project Overview
 
-This repository converts NVIDIA CUDA documentation (PTX ISA 9.1, CUDA Runtime API 13.1, CUDA Driver API 13.1, CUDA Math API 13.x, cuBLAS 13.2, and NCCL) from HTML into searchable markdown files. It also packages the output as a skill for AI IDEs (like Claude Code, Trae, etc.) for GPU development assistance.
+This repository provides an automated, knowledge-augmented CUDA kernel optimization pipeline for Qoder (qoder.com). It combines deep local knowledge (via NVIDIA documentation) with an AI Agent-driven optimization loop.
 
 The repo has two functional parts:
 
-1. **Scraper** (`scrape_cuda_docs.py`) — A Python script that fetches, converts, and cleans NVIDIA's HTML documentation into organized markdown
-2. **Skill** (`cuda_skill/`) — The output artifact: a portable skill directory with `SKILL.md` and `references/` containing ~640 markdown files across three documentation sets
+1. **Scraper** (`nvidia_doc_sync/scrape_cuda_docs.py`) — A Python script that fetches, converts, and cleans NVIDIA's HTML documentation into organized markdown.
+2. **Skills Monorepo** (`skills/`) — A collection of specialized Agent skills that work together to automatically profile, analyze, and optimize CUDA code, grounded in the scraped documentation.
 
 ## Commands
 
@@ -19,22 +19,22 @@ The scraper is a single `uv` script with inline dependency metadata. No separate
 
 ```bash
 # Scrape PTX ISA documentation
-uv run scrape_cuda_docs.py ptx
+uv run nvidia_doc_sync/scrape_cuda_docs.py ptx
 
 # Scrape CUDA Runtime API documentation
-uv run scrape_cuda_docs.py runtime
+uv run nvidia_doc_sync/scrape_cuda_docs.py runtime
 
 # Scrape CUDA Driver API documentation
-uv run scrape_cuda_docs.py driver
+uv run nvidia_doc_sync/scrape_cuda_docs.py driver
 
 # Re-run cleanup without re-downloading (uses cached raw files)
-uv run scrape_cuda_docs.py driver --skip-download
+uv run nvidia_doc_sync/scrape_cuda_docs.py driver --skip-download
 
 # Force re-download even if cache exists
-uv run scrape_cuda_docs.py driver --force
+uv run nvidia_doc_sync/scrape_cuda_docs.py driver --force
 
 # Custom output directory
-uv run scrape_cuda_docs.py ptx --output-dir /path/to/output
+uv run nvidia_doc_sync/scrape_cuda_docs.py ptx --output-dir /path/to/output
 ```
 
 ### Linting / Testing
@@ -43,7 +43,7 @@ There are no lint, test, or build commands configured for this repository.
 
 ## Architecture
 
-### Scraper (`scrape_cuda_docs.py`)
+### Scraper (`nvidia_doc_sync/scrape_cuda_docs.py`)
 
 A single-file scraper using class inheritance to handle two distinct documentation formats:
 
@@ -53,26 +53,29 @@ A single-file scraper using class inheritance to handle two distinct documentati
 
 Dependencies: `beautifulsoup4`, `html2text`, `requests` (declared inline via PEP 723 script metadata).
 
-### Skill output (`cuda_skill/`)
+### Skills Monorepo (`skills/`)
 
-```
-cuda_skill/
-├── SKILL.md                    # Skill definition (~13KB, always loaded by Claude Code)
-└── references/
-    ├── ptx-docs/               # 405 files organized by chapter (e.g., 9-instruction-set/)
-    ├── cuda-runtime-docs/      # modules/ (41 files) + data-structures/ (66 files)
-    ├── cuda-driver-docs/       # modules/ (50 files) + data-structures/ (80 files)
-    ├── ptx-isa.md              # Search guide with grep examples
-    ├── cuda-runtime.md         # Search guide with grep examples
-    ├── cuda-driver.md          # Search guide with grep examples
-    ├── nsys-guide.md           # Nsight Systems profiling patterns
-    ├── ncu-guide.md            # Nsight Compute metrics interpretation
-    ├── debugging-tools.md      # compute-sanitizer, cuda-gdb, cuobjdump
-    ├── nvtx-patterns.md        # NVTX instrumentation patterns
-    └── performance-traps.md    # Bank conflicts, coalescing, scale traps
+The skills are organized as a multi-skill monorepo to separate concerns and allow the Agent to orchestrate complex optimization workflows:
+
+```text
+skills/
+├── cuda-knowledge/             # Knowledge base skill (formerly cuda_skill)
+│   ├── SKILL.md                # Defines how to search the documentation
+│   └── references/             # 640+ markdown files (PTX, cuBLAS, Math API, etc.)
+├── cuda-optimizer/             # The main orchestrator skill
+│   └── SKILL.md                # Drives the profile-analyze-optimize loop
+├── cuda-code-generator/        # Code generation and modification skill
+│   ├── SKILL.md                # Instructed to search cuda-knowledge for API accuracy
+│   └── references/
+│       └── cuda-optimization-strategies.md
+├── ncu-rep-analyzer/           # NCU profiling and bottleneck analysis skill
+│   └── SKILL.md                # Instructed to use performance-traps.md for diagnosis
+└── kernel-benchmarker/         # Compilation, validation, and benchmarking skill
+    ├── SKILL.md                # Instructed to use debugging-tools.md on failure
+    └── scripts/benchmark.py
 ```
 
-The `*-docs/` directories contain raw reference content. The top-level `.md` guides in `references/` are hand-written search guides and workflow references. Each `*-docs/` directory has an `INDEX.md` listing all files.
+The action skills (`cuda-code-generator`, `ncu-rep-analyzer`, `kernel-benchmarker`) are strictly instructed to ground their operations in the documentation provided by `cuda-knowledge`, reducing hallucination and improving the depth of optimization.
 
 ### Key design decisions
 
