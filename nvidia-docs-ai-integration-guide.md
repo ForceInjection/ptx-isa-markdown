@@ -1,4 +1,4 @@
-# 工欲善其事，必先利其器：NVIDIA 官方文档 Agent Skill 项目介绍
+# 工欲善其事，必先利其器：面向 Vibe Coding 的 CUDA 代码技能库介绍
 
 写给 vLLM 等大模型推理框架与 GPU 底层开发者！
 
