@@ -4,7 +4,7 @@
 
 ## Table of Contents
 
-- [Local Documentation](#local-documentation) — 128 markdown files, 0.8MB
+- [Local Documentation](#local-documentation) — 129 markdown files, 1.2MB
 - [When to Use CUDA Driver API Documentation](#when-to-use-cuda-driver-api-documentation) — Context management, module loading, virtual memory
 - [Quick Search Examples](#quick-search-examples) — Error codes, contexts, module loading, virtual memory
 - [Driver API vs Runtime API](#driver-api-vs-runtime-api) — Key differences and when to use each

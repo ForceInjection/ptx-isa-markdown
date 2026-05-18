@@ -73,6 +73,8 @@ The table above is a fast lookup index. Detailed code snippets and patterns for 
 | CUDA Libraries           | [samples-cuda-libraries.md](references/samples-cuda-libraries.md)           | simpleCUBLAS, batchCUBLAS, conjugateGradient, simpleCUFFT, histEqualizationNPP                                       |
 | Performance Optimization | [samples-performance.md](references/samples-performance.md)                 | transpose, launchConfigTuning, warpAggregatedAtomicsCG, kernelNsysProfile                                            |
 | Framework Interop        | [samples-framework-interop.md](references/samples-framework-interop.md)     | customPyTorchKernel, customTensorFlowKernel                                                                          |
+| Multi-GPU & Distributed  | [samples-multi-gpu.md](references/samples-multi-gpu.md)                     | simpleP2P (Python), ipcMemoryPool, multiGPUGradientAverage                                                           |
+| Advanced Topics          | [samples-advanced-topics.md](references/samples-advanced-topics.md)         | blockwiseSum, prefixSum, jitLtoLinking, greenContext                                                                 |
 
 ---
 

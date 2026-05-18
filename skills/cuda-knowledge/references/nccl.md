@@ -4,7 +4,7 @@
 
 ## Table of Contents
 
-- [Local Documentation](#local-documentation) — 33 markdown files, 0.5MB
+- [Local Documentation](#local-documentation) — 34 markdown files, 516 KB
 - [When to Use NCCL Documentation](#when-to-use-nccl-documentation) — Collectives, P2P, multi-GPU, multi-node
 - [Quick Search Examples](#quick-search-examples) — AllReduce, comm creation, env vars, errors
 - [Key API Functions](#key-api-functions) — Communicators, collectives, P2P

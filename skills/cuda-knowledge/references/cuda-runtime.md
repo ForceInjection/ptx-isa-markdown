@@ -4,7 +4,7 @@
 
 ## Table of Contents
 
-- [Local Documentation](#local-documentation) — 107 markdown files, 0.9MB
+- [Local Documentation](#local-documentation) — 104 markdown files, 1.2MB
 - [When to Use CUDA Runtime Documentation](#when-to-use-cuda-runtime-documentation) — Error codes, API details, device properties
 - [Quick Search Examples](#quick-search-examples) — Error codes, cudaDeviceProp, contexts, streams, memory pools
 - [Documentation Structure](#documentation-structure) — Modules and data structures organization

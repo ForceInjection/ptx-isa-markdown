@@ -75,9 +75,26 @@ grep -r "reduction\|GEMM\|CUDA Graph" skills/cuda-samples/SKILL.md
 
 # Find samples requiring specific GPU architecture
 grep -r "SM 8.0\|SM 9.0\|Hopper\|Ampere" skills/cuda-samples/SKILL.md
+
+# Verify all sample paths exist in the submodule
+uv run scripts/check_links.py
+
+# Clone the submodule for full source access (shallow clone, ~220 MB)
+git submodule update --init
 ```
 
-### No lint, test, or build commands are configured.
+### Validation
+
+```bash
+# Check cross-skill interface consistency
+python3 scripts/check_skills.py
+
+# Check all documented counts match the filesystem
+python3 scripts/check_counts.py
+
+# Verify cuda-samples skill paths against the submodule
+uv run scripts/check_links.py
+```
 
 ## Architecture
 

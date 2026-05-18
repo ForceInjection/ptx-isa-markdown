@@ -4,7 +4,7 @@
 
 ## Table of Contents
 
-- [Local Documentation](#local-documentation) — 40 markdown files, 0.4MB
+- [Local Documentation](#local-documentation) — 41 markdown files, 528 KB
 - [When to Use CUDA Math API Documentation](#when-to-use-cuda-math-api-documentation) — Device intrinsics, narrow-precision types, casting
 - [Quick Search Examples](#quick-search-examples) — Fast intrinsics, FP8, half, bfloat16, SIMD
 - [Precision Hierarchy](#precision-hierarchy) — Standard vs intrinsic functions

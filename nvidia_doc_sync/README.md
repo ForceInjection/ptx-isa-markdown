@@ -57,9 +57,9 @@ usage: scrape_cuda_docs.py [-h] [--output-dir OUTPUT_DIR] [--skip-download] [--f
 | `ptx`     | 抓取 PTX ISA 文档（单页面结构，会被拆分为约 405 个文件）                |
 | `runtime` | 抓取 CUDA Runtime API 文档（多页面结构：包含模块和数据结构）            |
 | `driver`  | 抓取 CUDA Driver API 文档（多页面结构：包含模块和数据结构）             |
-| `math`    | 抓取 CUDA Math API 文档（多页面结构：包含模块和数据结构，约 54 个文件） |
+| `math`    | 抓取 CUDA Math API 文档（多页面结构：包含模块和数据结构，约 41 个文件） |
 | `cublas`  | 抓取 cuBLAS 文档（单页面 Sphinx 结构，按章节拆分为约 319 个文件）       |
-| `nccl`    | 抓取 NCCL 文档（多页面 Sphinx 站点，约 33 个文件，按主题组织）          |
+| `nccl`    | 抓取 NCCL 文档（多页面 Sphinx 站点，约 34 个文件，按主题组织）          |
 
 ### 3.2 选项参数
 

@@ -20,8 +20,8 @@ cublasDestroy(handle);
 
 ## 6.2 batchCUBLAS
 
-- **Path**: `cpp/4_CUDA_Libraries/batchCUBLAS/batchCUBLAS.cu`
-- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/4_CUDA_Libraries/batchCUBLAS/batchCUBLAS.cu>
+- **Path**: `cpp/4_CUDA_Libraries/batchCUBLAS/batchCUBLAS.cpp`
+- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/4_CUDA_Libraries/batchCUBLAS/batchCUBLAS.cpp>
 - **Pattern**: `cublasSgemmBatched` and `cublasSgemmStridedBatched` — batched small-GEMM patterns essential for multi-head attention and ensemble models
 - **Arch**: All
 - **Lines**: ~350
@@ -38,8 +38,8 @@ cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N, M, N, K,
 
 ## 6.3 conjugateGradient
 
-- **Path**: `cpp/4_CUDA_Libraries/conjugateGradient/conjugateGradient.cpp`
-- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/4_CUDA_Libraries/conjugateGradient/conjugateGradient.cpp>
+- **Path**: `cpp/4_CUDA_Libraries/conjugateGradient/main.cpp`
+- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/4_CUDA_Libraries/conjugateGradient/main.cpp>
 - **Pattern**: Complete Conjugate Gradient solver combining CUBLAS (BLAS ops: dot, axpy, gemv) and CUSPARSE (sparse matrix-vector multiply) — the reference pattern for numerical solvers
 - **Arch**: All
 - **Lines**: ~400

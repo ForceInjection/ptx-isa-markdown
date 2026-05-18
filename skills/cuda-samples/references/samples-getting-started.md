@@ -83,8 +83,8 @@ cudaFreeAsync(ptr, stream);
 
 ## 1.5 UnifiedMemoryPerf
 
-- **Path**: `cpp/6_Performance/UnifiedMemoryPerf/UnifiedMemoryPerf.cu`
-- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/6_Performance/UnifiedMemoryPerf/UnifiedMemoryPerf.cu>
+- **Path**: `cpp/6_Performance/UnifiedMemoryPerf/matrixMultiplyPerf.cu`
+- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/6_Performance/UnifiedMemoryPerf/matrixMultiplyPerf.cu>
 - **Pattern**: Compares Unified Memory (with/without prefetch hints), zero-copy, pageable, and pinned memory performance for matrix multiplication
 - **Arch**: All
 - **Lines**: ~350

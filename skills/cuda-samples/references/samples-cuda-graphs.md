@@ -40,8 +40,8 @@ graph.launch(stream)  # replay with cached launch
 
 ## 5.3 jacobiCudaGraphs
 
-- **Path**: `cpp/3_CUDA_Features/jacobiCudaGraphs/jacobiCudaGraphs.cu`
-- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/3_CUDA_Features/jacobiCudaGraphs/jacobiCudaGraphs.cu>
+- **Path**: `cpp/3_CUDA_Features/jacobiCudaGraphs/jacobi.cu`
+- **URL**: <https://github.com/NVIDIA/cuda-samples/blob/master/cpp/3_CUDA_Features/jacobiCudaGraphs/jacobi.cu>
 - **Pattern**: Updating an instantiated graph with `cudaGraphExecKernelNodeSetParams` and `cudaGraphExecUpdate` — essential for iterative solvers that need to rewrite parameters without rebuilding the graph
 - **Arch**: All (CUDA 10.0+)
 - **Lines**: ~300
