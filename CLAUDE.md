@@ -94,7 +94,7 @@ cuda-optimizer (orchestrator)
     └── cuda-code-generator  → generate/rewrite .cu files with optimizations
 ```
 
-`cuda-knowledge` (~1040 markdown files) provides API reference; `cuda-samples` (~34 KB, ~50 curated entries) provides concrete working code patterns from official NVIDIA samples with GitHub permalinks and key snippets. All three action skills ground their work in both to reduce hallucination. The optimizer drives this loop: **benchmark → evaluate exit conditions → NCU profile → implement optimizations → repeat** until performance converges (<2% improvement over 2 consecutive rounds).
+`cuda-knowledge` (~1040 markdown files) provides API reference; `cuda-samples` (SKILL.md ~13 KB, 8 reference files 48 KB; ~50 curated entries) provides concrete working code patterns from official NVIDIA samples with GitHub permalinks and key snippets. Both follow progressive disclosure: lightweight SKILL.md stays in context, detailed references load on demand. All three action skills ground their work in both to reduce hallucination. The optimizer drives this loop: **benchmark → evaluate exit conditions → NCU profile → implement optimizations → repeat** until performance converges (<2% improvement over 2 consecutive rounds).
 
 ### Kernel Interface Convention
 
