@@ -7,6 +7,8 @@ description: Profiles a CUDA kernel with NCU and analyzes the resulting .ncu-rep
 
 Executes NCU profiling on a CUDA kernel, analyzes the `.ncu-rep` report, diagnoses performance bottlenecks, and provides optimization recommendations.
 
+All commands MUST be executed in the project **root directory**.
+
 ---
 
 ## Workflow

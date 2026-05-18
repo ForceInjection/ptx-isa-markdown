@@ -20,7 +20,7 @@
 The documentation has been converted to markdown with:
 
 - ✅ All device function signatures and descriptions preserved
-- ✅ 40 files: 14 modules + 26 data structures (0.4 MB)
+- ✅ 41 files: 14 modules + 26 data structures (528 KB)
 - ✅ Full searchability with grep/ripgrep
 - ✅ Type layouts and bit-field definitions preserved
 - ✅ Navigation, duplicate TOC, and footer removed (26.5% size reduction)
@@ -239,6 +239,6 @@ grep "^__device__.*unsigned int\|vadd\|vmax\|vsub" cuda-math-docs/modules/group_
 ## Version Information
 
 - **CUDA Math API Version**: 13.x
-- **Total Size**: 0.4 MB (26.5% reduction from 0.6 MB raw)
+- **Total Size**: 528 KB (26.5% reduction from 0.6 MB raw)
 - **Files**: 14 modules + 26 data structures + 1 index
 - **Source**: https://docs.nvidia.com/cuda/cuda-math-api/

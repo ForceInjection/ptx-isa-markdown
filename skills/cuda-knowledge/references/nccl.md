@@ -21,7 +21,7 @@
 The documentation has been converted to markdown with:
 
 - ✅ All function signatures, parameters, and return values preserved
-- ✅ 33 files organized by topic (0.5 MB)
+- ✅ 34 files organized by topic (516 KB)
 - ✅ Full searchability with grep/ripgrep
 - ✅ Environment variable reference
 - ✅ Usage guide + API reference + troubleshooting sections

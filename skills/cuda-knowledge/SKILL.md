@@ -221,12 +221,12 @@ Complete reference documentation available for grep-based search:
 - Search guide: `references/ptx-isa.md`
 - Use for: Instruction-level optimization, inline PTX, TensorCore operations (WMMA, WGMMA, TMA), memory swizzling
 
-**CUDA Runtime API 13.1** — `references/cuda-runtime-docs/` (107 files, 0.9MB)
+**CUDA Runtime API 13.1** — `references/cuda-runtime-docs/` (104 files, 1.2MB)
 
 - Search guide: `references/cuda-runtime.md`
 - Use for: Error codes, API parameters, device properties (`cudaDeviceProp`), memory management, stream behavior
 
-**CUDA Driver API 13.1** — `references/cuda-driver-docs/` (128 files, 0.8MB)
+**CUDA Driver API 13.1** — `references/cuda-driver-docs/` (129 files, 1.2MB)
 
 - Search guide: `references/cuda-driver.md`
 - Use for: Context management (`cuCtxCreate`), module loading (`cuModuleLoad`), virtual memory, Driver errors (`CUDA_ERROR_*`), advanced features
@@ -242,7 +242,7 @@ Complete reference documentation available for grep-based search:
   - `3-using-the-cublaslt-api/3.3-cublaslt-datatypes-reference.md` — cublasLtEpilogue_t, layout attributes
   - `2-using-the-cublas-api/2.8-blas-like-extension.md` — GemmEx, GemmBatchedEx, GemmStridedBatchedEx
 
-**CUDA Math API** — `references/cuda-math-docs/` (40 files, 0.4MB)
+**CUDA Math API** — `references/cuda-math-docs/` (41 files, 528K)
 
 - Search guide: `references/cuda-math.md`
 - Modules: `modules/` (14 files) — single/double precision, intrinsics for half, bfloat16, FP8, FP6, FP4, SIMD, cast, integer
@@ -254,10 +254,10 @@ Complete reference documentation available for grep-based search:
   - `modules/group__cuda__math__intrinsic__half.md` — `__half` arithmetic operations
   - `modules/group__cuda__math__intrinsic__bfloat16.md` — `__nv_bfloat16` operations
 
-**NCCL** — `references/nccl-docs/` (33 files, 0.5MB)
+**NCCL** — `references/nccl-docs/` (34 files, 516K)
 
 - Search guide: `references/nccl.md`
-- Structure: `usage/` (13 files — communicators, collectives, streams, P2P, CUDA graphs), `api/` (12 files — colls, comms, p2p, types, device API), top-level guides (overview, env, troubleshooting, examples, mpi)
+- Structure: `usage/` (11 files — communicators, collectives, streams, P2P, CUDA graphs), `api/` (12 files — colls, comms, p2p, types, device API), top-level guides (overview, env, troubleshooting, examples, mpi)
 - Use for: `ncclAllReduce` / `ncclReduceScatter` / `ncclAllGather` signatures, communicator setup (`ncclCommInitRank`, `ncclGetUniqueId`), P2P send/recv for pipeline parallel, environment variable tuning (`NCCL_DEBUG`, `NCCL_ALGO`, `NCCL_IB_*`), device-initiated communication (GIN)
 - Key files:
   - `api/colls.md` — all collective function signatures

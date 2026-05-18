@@ -144,7 +144,7 @@ skills/cuda-knowledge/references/cuda-math-docs/
 ```text
 # NCCL 文档输出结构示例
 skills/cuda-knowledge/references/nccl-docs/
-├── usage/                  # 13 个文件 —— 通信器、集合通信、流、P2P、CUDA 图等
+├── usage/                  # 11 个文件 —— 通信器、集合通信、流、P2P、CUDA 图等
 ├── api/                    # 12 个文件 —— 集合通信、通信器、P2P、类型、操作、标志、设备 API 等
 ├── troubleshooting/        # 1 个文件  —— RAS 子系统
 ├── overview.md             # NCCL 概念与拓扑结构
@@ -357,8 +357,9 @@ default_dirs = {
 }
 
 # 3. 对于 Sphinx 文档，在抓取器选择代码块中添加分发逻辑
-elif args.api_type in SphinxScraper.KNOWN_DOCS:
-    scraper = SphinxScraper.from_doc_type(args.api_type, args.output_dir)
+#    注: 当前 main() 对 SphinxScraper 使用显式的 elif 分支（而非 KNOWN_DOCS 泛型分发）
+elif args.api_type == "new-api":
+    scraper = SphinxScraper.from_doc_type("new-api", args.output_dir)
 ```
 
 ### 7.4 步骤 4 — 下载文档

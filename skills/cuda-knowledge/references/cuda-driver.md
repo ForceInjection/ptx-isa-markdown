@@ -21,7 +21,7 @@
 The documentation has been converted to markdown with:
 
 - ✅ All function signatures, parameters, and return values preserved
-- ✅ 128 files organized by module and data structures (0.8 MB)
+- ✅ 129 files organized by module and data structures (1.2 MB)
 - ✅ Full searchability with grep/ripgrep
 - ✅ Type and function names preserved (redundant URLs removed)
 - ✅ Detailed descriptions and notes
@@ -255,6 +255,6 @@ grep "cuGraphLaunch" cuda-driver-docs/modules/group__cuda__graph.md
 
 - **CUDA Toolkit Version**: 13.1
 - **Documentation Date**: December 4, 2025
-- **Total Size**: 0.8 MB (76% reduction from 3.6 MB raw)
+- **Total Size**: 1.2 MB (76% reduction from 3.6 MB raw)
 - **Files**: 50 modules + 80 data structures + 1 index
 - **Source**: https://docs.nvidia.com/cuda/cuda-driver-api/

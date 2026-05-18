@@ -27,6 +27,15 @@ uv run nvidia_doc_sync/scrape_cuda_docs.py runtime
 # Scrape CUDA Driver API documentation
 uv run nvidia_doc_sync/scrape_cuda_docs.py driver
 
+# Scrape CUDA Math API documentation
+uv run nvidia_doc_sync/scrape_cuda_docs.py math
+
+# Scrape cuBLAS documentation
+uv run nvidia_doc_sync/scrape_cuda_docs.py cublas
+
+# Scrape NCCL documentation
+uv run nvidia_doc_sync/scrape_cuda_docs.py nccl
+
 # Re-run cleanup without re-downloading (uses cached raw files)
 uv run nvidia_doc_sync/scrape_cuda_docs.py driver --skip-download
 
@@ -45,11 +54,13 @@ There are no lint, test, or build commands configured for this repository.
 
 ### Scraper (`nvidia_doc_sync/scrape_cuda_docs.py`)
 
-A single-file scraper using class inheritance to handle two distinct documentation formats:
+A single-file scraper using class inheritance to handle three distinct documentation formats:
 
 - **`DocumentationScraper`** — Base class with shared HTTP fetching, HTML-to-markdown conversion (`html2text`), navigation removal, and filename sanitization
-- **`PTXScraper(DocumentationScraper)`** — Handles the PTX ISA, which is a single monolithic HTML page. Splits it by heading hierarchy into ~405 individual markdown files organized by chapter directories
-- **`APIScraper(DocumentationScraper)`** — Handles Runtime and Driver APIs, which are multi-page HTML docs. Discovers pages by crawling `modules.html` and `annotated.html`, downloads each page to a cache directory (`*-raw/`), then runs a cleanup pass that strips duplicate TOCs, footers, boilerplate, and redundant URLs (producing 76-83% size reduction). The two-phase approach (download + clean) allows iterating on cleanup logic without re-downloading via `--skip-download`
+- **`SphinxScraper(DocumentationScraper)`** — Handles Sphinx single-page docs (cuBLAS). Splits monolithic HTML by heading hierarchy into per-section markdown files organized by chapter directories
+- **`PTXScraper(SphinxScraper)`** — Extends SphinxScraper for PTX ISA, which has additional parsing quirks. Splits the single monolithic HTML page by heading hierarchy into ~405 individual markdown files organized by chapter directories
+- **`SphinxMultiPageScraper(DocumentationScraper)`** — Handles Sphinx multi-page docs (NCCL). Crawls pages from a toctree index, converts each page to markdown, preserving the relative path structure
+- **`APIScraper(DocumentationScraper)`** — Handles Doxygen multi-page docs (Runtime, Driver, Math API). Discovers pages by crawling `modules.html` and `annotated.html`, downloads each page to a cache directory (`*-raw/`), then runs a cleanup pass that strips duplicate TOCs, footers, boilerplate, and redundant URLs (producing 76-83% size reduction). The two-phase approach (download + clean) allows iterating on cleanup logic without re-downloading via `--skip-download`
 
 Dependencies: `beautifulsoup4`, `html2text`, `requests` (declared inline via PEP 723 script metadata).
 
@@ -61,7 +72,7 @@ The skills are organized as a multi-skill monorepo to separate concerns and allo
 skills/
 ├── cuda-knowledge/             # Knowledge base skill (formerly cuda_skill)
 │   ├── SKILL.md                # Defines how to search the documentation
-│   └── references/             # 640+ markdown files (PTX, cuBLAS, Math API, etc.)
+│   └── references/             # ~1040 markdown files (PTX, cuBLAS, Math API, etc.)
 ├── cuda-optimizer/             # The main orchestrator skill
 │   └── SKILL.md                # Drives the profile-analyze-optimize loop
 ├── cuda-code-generator/        # Code generation and modification skill
@@ -79,6 +90,6 @@ The action skills (`cuda-code-generator`, `ncu-rep-analyzer`, `kernel-benchmarke
 
 ### Key design decisions
 
-- **Scraper is a single file** — All three API types (PTX, Runtime, Driver) are handled by one script with a subcommand interface, not separate scripts (the README references separate scripts for backward compatibility but the code has been unified)
+- **Scraper is a single file** — All six API types (PTX, Runtime, Driver, Math, cuBLAS, NCCL) are handled by one script with a subcommand interface, not separate scripts
 - **Cache-then-clean pipeline** — API docs are first downloaded raw to `*-raw/` cache dirs, then cleaned to final output. This separates network-dependent work from text processing
 - **Inline uv dependencies** — No `requirements.txt` or `pyproject.toml`; dependencies are declared in the script's PEP 723 header so `uv run` resolves everything

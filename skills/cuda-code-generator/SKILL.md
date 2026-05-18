@@ -36,8 +36,8 @@ Confirm the following information (can be obtained from the report or user input
 
 ### Step 2: Read Input Files
 
-1. **Read NCU Analysis Report** (`*_analysis.md`, required)
-   - Extract bottleneck type (DRAM_MEMORY_BOUND / L1_PRESSURE_BOUND / LATENCY_BOUND / COMPUTE_BOUND / OCCUPANCY_BOUND)
+1. **Read NCU Analysis Report** (`*_analysis.md`, preferred)
+   - Extract bottleneck type (DRAM_MEMORY_BOUND / L1_PRESSURE_BOUND / LATENCY_BOUND / COMPUTE_BOUND / OCCUPANCY_BOUND / MIXED_BOUND)
    - Extract optimization priority list (P0~Pn)
    - Extract key metrics (SM Busy, DRAM Throughput, Warp Cycles, etc.)
 
@@ -62,6 +62,7 @@ Quick reference for strategies corresponding to each bottleneck type (see refere
 | LATENCY_BOUND     | SM Busy < 50%, Occupancy > 60% | Double Buffering → ILP → Loop Unrolling               |
 | COMPUTE_BOUND     | SM > 60%, SM Busy > 80%        | FMA → FP16/TF32 → Tensor Core                         |
 | OCCUPANCY_BOUND   | Occupancy < 30%, SM Busy > 70% | Adjust Block Size → `__launch_bounds__` → Reduce smem |
+| MIXED_BOUND       | No single dominant bottleneck  | Profile with narrower section sets; address top metric first |
 
 ---
 

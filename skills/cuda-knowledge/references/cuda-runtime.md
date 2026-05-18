@@ -22,7 +22,7 @@
 The documentation has been converted to markdown with:
 
 - ✅ All function signatures, parameters, and return values preserved
-- ✅ 107 files organized by module and data structures (0.9 MB)
+- ✅ 104 files organized by module and data structures (1.2 MB)
 - ✅ Full searchability with grep/ripgrep
 - ✅ Type and function names preserved (redundant URLs removed)
 - ✅ Detailed descriptions and notes

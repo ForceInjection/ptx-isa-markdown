@@ -114,7 +114,7 @@ Call the **ncu-rep-analyzer skill** to execute the following on the current kern
 
 - NCU Profiling (generate `.ncu-rep` file)
 - Read and analyze the report, outputting:
-  - Bottleneck type (DRAM_BOUND / L1_BOUND / LATENCY_BOUND / COMPUTE_BOUND)
+  - Bottleneck type (DRAM_MEMORY_BOUND / L1_PRESSURE_BOUND / LATENCY_BOUND / COMPUTE_BOUND / OCCUPANCY_BOUND / MIXED_BOUND)
   - Optimization priority list (P0 ~ Pn)
 
 **After ncu-rep-analyzer returns**, immediately process the result:

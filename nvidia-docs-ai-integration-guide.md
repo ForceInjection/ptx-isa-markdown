@@ -209,7 +209,7 @@ AI 会触发 Skill （关键词匹配 `SKILL.md` 的 description frontmatter ）
 
 在基础的知识检索之外，本项目扩展出了一个完整的 Agent 技能矩阵（位于 `skills/` 目录），旨在为 Qoder 等 AI 助手提供一套自动化的 CUDA kernel 优化流水线。该矩阵包含以下五个核心技能：
 
-- **`cuda-knowledge`**：知识库核心，包含 640+ Markdown 格式的官方文档，为其他技能提供严谨的 API 约束与底层知识。
+- **`cuda-knowledge`**：知识库核心，包含 1040+ Markdown 格式的官方文档，为其他技能提供严谨的 API 约束与底层知识。
 - **`cuda-optimizer`**：核心调度技能，负责驱动“分析 - 优化 - 验证”的闭环迭代。
 - **`cuda-code-generator`**：代码生成与修改技能，被严格指令必须基于 `cuda-knowledge` 查阅 API 细节，避免 AI 幻觉。
 - **`ncu-rep-analyzer`**：NCU 性能分析技能，负责解读性能分析报告，识别 memory 瓶颈或计算瓶颈。
