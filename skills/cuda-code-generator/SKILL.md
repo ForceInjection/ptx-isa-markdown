@@ -55,13 +55,13 @@ Find the corresponding strategy combination in [cuda-optimization-strategies.md]
 
 Quick reference for strategies corresponding to each bottleneck type (see reference documentation for detailed explanations and code templates):
 
-| Bottleneck Type   | Characteristic Condition       | Priority Strategy                                     |
-| ----------------- | ------------------------------ | ----------------------------------------------------- |
-| DRAM_MEMORY_BOUND | DRAM > 70%, SM < 30%           | Block Tiling → Vectorized Load → Prefetching          |
-| L1_PRESSURE_BOUND | L1 > 80%, DRAM < 30%           | Shared Memory Tiling → Padding → Data Transpose       |
-| LATENCY_BOUND     | SM Busy < 50%, Occupancy > 60% | Double Buffering → ILP → Loop Unrolling               |
-| COMPUTE_BOUND     | SM > 60%, SM Busy > 80%        | FMA → FP16/TF32 → Tensor Core                         |
-| OCCUPANCY_BOUND   | Occupancy < 30%, SM Busy > 70% | Adjust Block Size → `__launch_bounds__` → Reduce smem |
+| Bottleneck Type   | Characteristic Condition       | Priority Strategy                                            |
+| ----------------- | ------------------------------ | ------------------------------------------------------------ |
+| DRAM_MEMORY_BOUND | DRAM > 70%, SM < 30%           | Block Tiling → Vectorized Load → Prefetching                 |
+| L1_PRESSURE_BOUND | L1 > 80%, DRAM < 30%           | Shared Memory Tiling → Padding → Data Transpose              |
+| LATENCY_BOUND     | SM Busy < 50%, Occupancy > 60% | Double Buffering → ILP → Loop Unrolling                      |
+| COMPUTE_BOUND     | SM > 60%, SM Busy > 80%        | FMA → FP16/TF32 → Tensor Core                                |
+| OCCUPANCY_BOUND   | Occupancy < 30%, SM Busy > 70% | Adjust Block Size → `__launch_bounds__` → Reduce smem        |
 | MIXED_BOUND       | No single dominant bottleneck  | Profile with narrower section sets; address top metric first |
 
 ---
