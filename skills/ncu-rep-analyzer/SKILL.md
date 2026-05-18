@@ -51,50 +51,62 @@ find . -name "*.ncu-rep" 2>/dev/null
 
 ### Step 2: NCU Profiling
 
-Use `{kernel_stem}` directly as the output filename and save it in the `{kernel_dir}` directory where the `.cu` file is located. Do not append a timestamp.
+Two-tier approach — use the self-contained profiling executable for reliability.
+
+**Step 2a: Build the profiling executable**：
 
 ```bash
-ncu --target-processes all \
-    --profile-from-start on \
-    --launch-skip 20 \
+python3 skills/kernel-benchmarker/scripts/ncu_profile.py <cu_file> \
+    [--PARAM=VALUE ...] --build-only
+```
+
+This generates `<cu_stem>_bench` — a standalone executable that allocates its own GPU memory and launches the kernel. No subprocess, no Python dependency at profile time.
+
+**Step 2b: Run NCU**：
+
+Default (works everywhere, even on restricted containers without PMU access):
+
+```bash
+ncu --kernel-name solve \
+    --launch-skip 10 \
+    --launch-count 1 \
+    --set launch \
+    -o {kernel_dir}/{kernel_stem} -f \
+    {kernel_dir}/{kernel_stem}_bench [--PARAM=VALUE ...] --warmup=10 --repeat=22
+```
+
+For detailed performance metrics (requires host PMU access: `perf_event_paranoid=0`):
+
+```bash
+ncu --kernel-name solve \
+    --launch-skip 10 \
     --launch-count 1 \
     --set full \
     -o {kernel_dir}/{kernel_stem} -f \
-    python3 skills/kernel-benchmarker/scripts/benchmark.py <cu_file> \
-    [--PARAM=VALUE ...] --repeat=22
+    {kernel_dir}/{kernel_stem}_bench [--PARAM=VALUE ...] --warmup=10 --repeat=22
 ```
 
-**Example** (for a file named `solution.cu`):
+> **Legacy mode**: You may still profile via `benchmark.py` (`ncu ... -f python3 skills/kernel-benchmarker/scripts/benchmark.py ...`), but NCU may disconnect when `benchmark.py` spawns `nvcc` subprocess. The `ncu_profile.py` / `_bench` approach is preferred.
 
-```bash
-ncu --target-processes all \
-    --profile-from-start on \
-    --launch-skip 20 \
-    --launch-count 1 \
-    --set full \
-    -o kernel/MatrixTranspose/solution -f \
-    python3 skills/kernel-benchmarker/scripts/benchmark.py kernel/MatrixTranspose/solution.cu \
-    --M=10000 --N=1000 --repeat=22
-```
+**Naming**: Use `{kernel_stem}` directly as the output filename in `{kernel_dir}`. Do not append a timestamp.
 
-> `--launch-skip 20` skips warmup, `--launch-count 1` only collects the 1st official iteration.
-> `--repeat` must be ≥ `launch-skip + launch-count + 1`, 22 is recommended.
+> `--launch-skip N` skips warmup iterations. `--launch-count 1` captures only the first profiling iteration. The bench executable must run ≥ `launch-skip + launch-count` total iterations.
 
 #### Handling NCU Execution Failures
 
-If `ncu` fails (e.g., permission denied, command not found, sandbox interception, etc.), you **MUST**:
+If `ncu` fails, you **MUST**:
 
 1. Output the explicit reason for the failure.
 2. Mark in the final report: `NCU Profiling Status: ❌ FAILED: <Reason>`
 3. Never skip silently, and never substitute with a `.ncu-rep` file from another algorithm.
-4. Output manual fix recommendations:
 
-```bash
-# Fix permission issue:
-echo 0 | sudo tee /proc/sys/kernel/perf_event_paranoid
+Common failures and fixes:
 
-# Re-run NCU Profiling (command as above)
-```
+| Error                   | Cause                                                  | Fix                                                                                                                   |
+| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `ERR_NVGPUCTRPERM`      | Container/profiling permission denied                  | Use `--set launch` instead of `--set full`, OR on the host: `echo 0 \| sudo tee /proc/sys/kernel/perf_event_paranoid` |
+| `command not found`     | ncu not in PATH (usually at `/usr/local/cuda/bin/ncu`) | `export PATH=/usr/local/cuda-12.8/bin:$PATH`                                                                          |
+| `==PROF== Disconnected` | Target process exited or spawned child processes       | Use `ncu_profile.py --build-only` to create a standalone bench executable                                             |
 
 ---
 
@@ -108,7 +120,13 @@ ncu --import <file.ncu-rep> --print-summary per-kernel
 
 ### Step 4: Automatically Diagnose Bottleneck
 
-Determine the primary bottleneck based on the extracted metrics using the following logic:
+**If `--set launch` was used** (restricted environment without PMU access): The report contains static device properties and kernel launch configuration only. Use these to provide a preliminary analysis:
+
+- Extract `device__attribute_clock_rate`, `device__attribute_fb_bus_width`, `device__attribute_compute_capability` from the report
+- Compare grid/block dimensions against theoretical occupancy limits
+- Note in the report: `NCU Mode: launch (static analysis only — use --set full on unrestricted hosts for dynamic metrics)`
+
+**If `--set full` or `--set basic` was used** (unrestricted host): Determine the primary bottleneck based on dynamic metrics:
 
 ```text
 roofline  = sm__throughput %

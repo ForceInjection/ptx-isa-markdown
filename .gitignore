@@ -1,0 +1,14 @@
+# MAC
+.DS_Store
+
+# secret
+.env
+
+# log
+*.log
+
+#临时文件
+TODO.md
+
+# NCU report
+*.ncu-rep

@@ -11,21 +11,13 @@ When --ref is provided:
 When --ref is omitted:
   Benchmarks the CUDA kernel only.
 
+The CUDA kernel is compiled to PTX and loaded via the CUDA Driver API
+(cuModuleLoadData + cuLaunchKernel) in the same process, avoiding
+cross-process CUDA memory isolation.
+
 Usage:
     python benchmark.py <solution.cu> [--DIM=VALUE ...] [options]
     python benchmark.py <solution.cu> --ref=<ref.py> [--DIM=VALUE ...] [options]
-
-Examples:
-    # Benchmark only
-    python benchmark.py VectorAddition/solution.cu --N=1000000
-    python benchmark.py MatMul/solution.cu --M=1024 --N=1024 --K=1024
-
-    # Validate + benchmark
-    python benchmark.py VectorAddition/solution.cu --ref=refs/vector_add.py --N=1000000
-    python benchmark.py MatMul/solution.cu --ref=refs/matmul.py --M=1024 --N=1024 --K=1024
-
-    # Custom warmup / repeat
-    python benchmark.py solution.cu --N=4096 --warmup=10 --repeat=100
 
 ref.py format
 -------------
@@ -39,13 +31,14 @@ ref.py format
     rtol = 1e-3
 """
 
-import re
-import os
-import sys
-import subprocess
-import ctypes
 import argparse
+import ctypes
 import importlib.util
+import os
+import re
+import subprocess
+import sys
+
 import torch
 
 # ---------------------------------------------------------------------------
@@ -91,11 +84,15 @@ INT_TYPES = {"int", "long", "size_t", "unsigned int"}
 # ---------------------------------------------------------------------------
 
 def parse_solve_signature(cu_file: str):
-    """Extract parameter list from `extern "C" void solve(...)` in a .cu file."""
+    """Extract parameter list from `extern "C" ... void solve(...)` in a .cu file."""
     with open(cu_file, "r") as f:
         content = f.read()
 
-    pattern = r'extern\s+"C"\s+void\s+solve\s*\(([\s\S]*?)\)\s*\{'
+    # Strip C-style comments to avoid matching signatures in comments
+    content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+    content = re.sub(r'//[^\n]*', '', content)
+
+    pattern = r'extern\s+"C"\s+(?:__global__\s+)?void\s+solve\s*\(([\s\S]*?)\)\s*\{'
     match = re.search(pattern, content)
     if not match:
         raise ValueError(
@@ -142,7 +139,7 @@ _STRIP_INCLUDES = re.compile(
 
 
 def _preprocess_cu(cu_file: str) -> str:
-    """Strip clang-specific includes that break nvcc. Returns path to clean file."""
+    """Strip clang-specific includes. Returns path to clean file."""
     with open(cu_file, "r") as f:
         src = f.read()
     cleaned = _STRIP_INCLUDES.sub("", src)
@@ -154,22 +151,165 @@ def _preprocess_cu(cu_file: str) -> str:
     return tmp
 
 
-def compile_cu(cu_file: str, output_so: str, arch: str):
-    """Compile .cu to a shared library."""
-    clean_file = _preprocess_cu(cu_file)
-    cmd = [
-        "nvcc", "-shared", "-Xcompiler", "-fPIC",
-        f"-arch={arch}", "-O3", "-o", output_so, clean_file,
-    ]
-    print(f"[compile] {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if clean_file != cu_file and os.path.exists(clean_file):
-        os.remove(clean_file)
-    if result.returncode != 0:
-        print(f"Compilation failed:\n{result.stderr}", file=sys.stderr)
-        sys.exit(1)
-    print(f"[compile] -> {output_so}")
+def _ensure_global(cu_file: str) -> str:
+    """If the solve function lacks __global__, rewrite with __global__ added."""
+    with open(cu_file, "r") as f:
+        src = f.read()
 
+    # If __global__ is already there, return as-is
+    if re.search(r'extern\s+"C"\s+__global__\s+void\s+solve', src):
+        return cu_file
+
+    # Add __global__ before void solve
+    new_src = re.sub(
+        r'(extern\s+"C"\s+)void\s+solve',
+        r'\1__global__ void solve',
+        src
+    )
+    if new_src == src:
+        return cu_file
+
+    tmp = cu_file + ".global.cu"
+    with open(tmp, "w") as f:
+        f.write(new_src)
+    return tmp
+
+
+# ---------------------------------------------------------------------------
+# Compile .cu → load with torch
+# ---------------------------------------------------------------------------
+
+def _compile_and_load(cu_file: str, arch: str, force_recompile: bool = False):
+    """Compile .cu → .ptx, load with PyTorch, return kernel launcher.
+
+    Caches the PTX file: if the .ptx exists and is newer than the .cu source,
+    skips recompilation (unless force_recompile=True).  This avoids spawning
+    nvcc subprocesses, which is essential for NCU profiling since NCU
+    disconnects when child processes exit.
+    """
+    ptx_file = os.path.splitext(cu_file)[0] + ".ptx"
+
+    need_compile = force_recompile or not os.path.exists(ptx_file)
+    if not need_compile:
+        ptx_mtime = os.path.getmtime(ptx_file)
+        cu_mtime = os.path.getmtime(cu_file)
+        need_compile = cu_mtime > ptx_mtime
+
+    if need_compile:
+        clean_file = _preprocess_cu(cu_file)
+        global_file = _ensure_global(clean_file)
+
+        cmd = ["nvcc", "-ptx", f"-arch={arch}", "-O3", "-o", ptx_file, global_file]
+        print(f"[compile] {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        for tmp in [clean_file, global_file]:
+            if tmp != cu_file and os.path.exists(tmp):
+                os.remove(tmp)
+
+        if result.returncode != 0:
+            print(f"Compilation failed:\n{result.stderr}", file=sys.stderr)
+            sys.exit(1)
+        print(f"[compile] -> {ptx_file}")
+    else:
+        print(f"[compile] using cached {ptx_file}")
+
+    # Load PTX with PyTorch
+    with open(ptx_file, "r") as f:
+        ptx_src = f.read()
+
+    # Create a CUDA module from PTX
+    # Use the low-level ctypes approach to load PTX
+    import ctypes
+    libnames = ("libcuda.so", "libcuda.so.1", "/usr/local/cuda/lib64/libcuda.so",
+                "/usr/local/cuda-12.8/lib64/libcuda.so", "/usr/local/cuda-12/lib64/libcuda.so")
+    cuda = None
+    for name in libnames:
+        try:
+            cuda = ctypes.CDLL(name)
+            break
+        except OSError:
+            continue
+    if cuda is None:
+        raise RuntimeError("Cannot load libcuda.so")
+
+    # CUDA Driver API types
+    CUresult = ctypes.c_int
+    CUDA_SUCCESS = 0
+
+    cuda.cuInit(0)
+    cuda.cuCtxGetCurrent.restype = CUresult
+
+    # Get current context
+    ctx = ctypes.c_void_p()
+    err = cuda.cuCtxGetCurrent(ctypes.byref(ctx))
+    if err != CUDA_SUCCESS:
+        raise RuntimeError(f"cuCtxGetCurrent failed: {err}")
+
+    # Load module from PTX
+    module = ctypes.c_void_p()
+    ptx_bytes = ptx_src.encode("utf-8")
+    err = cuda.cuModuleLoadData(ctypes.byref(module), ctypes.c_char_p(ptx_bytes))
+    if err != CUDA_SUCCESS:
+        raise RuntimeError(f"cuModuleLoadData failed: {err}")
+
+    # Get kernel function
+    kernel = ctypes.c_void_p()
+    err = cuda.cuModuleGetFunction(ctypes.byref(kernel), module, b"solve")
+    if err != CUDA_SUCCESS:
+        raise RuntimeError(f"cuModuleGetFunction failed: {err} (err={err})")
+
+    return cuda, module, kernel, ptx_file
+
+
+def _launch_kernel(cuda, kernel, params: list, dim_values: dict,
+                   kernel_tensors: dict):
+    """Launch the kernel via CUDA Driver API with the given tensors."""
+    CUDA_SUCCESS = 0
+
+    ptr_params = [(t, n, c) for t, n, c in params if t in DTYPE_MAP]
+    int_params = [(t, n) for t, n, c in params if t in INT_TYPES]
+
+    # Build kernel arguments
+    args = []
+    for ptype, pname, is_const in ptr_params:
+        args.append(ctypes.c_void_p(kernel_tensors[pname].data_ptr()))
+    for itype, iname in int_params:
+        val = dim_values[iname]
+        if itype in ("int", "unsigned int"):
+            args.append(ctypes.c_int(val))
+        elif itype in ("long", "size_t"):
+            args.append(ctypes.c_long(val))
+        else:
+            args.append(ctypes.c_int(val))
+
+    args_array = (ctypes.c_void_p * len(args))(*[ctypes.cast(ctypes.pointer(a), ctypes.c_void_p) for a in args])
+
+    # Determine grid/block dims from the total element count
+    total = 256  # default
+    for itype, iname in int_params:
+        total = dim_values[iname]
+        break
+
+    threads = 256
+    blocks = (total + threads - 1) // threads
+
+    err = cuda.cuLaunchKernel(
+        kernel,
+        blocks, 1, 1,        # grid dims
+        threads, 1, 1,       # block dims
+        0,                    # shared memory bytes
+        ctypes.c_void_p(0),  # stream (0 = default)
+        args_array,
+        None                  # extra options
+    )
+    if err != CUDA_SUCCESS:
+        raise RuntimeError(f"cuLaunchKernel failed: {err}")
+
+
+# ---------------------------------------------------------------------------
+# Reference loading
+# ---------------------------------------------------------------------------
 
 def load_reference(ref_file: str):
     """Import a Python reference file and return its module."""
@@ -186,26 +326,22 @@ def load_reference(ref_file: str):
 
 
 def _determine_ptr_elems(int_values: list, ptr_size_override: int) -> int:
-    """Calculate number of elements for pointer buffers from dimension values."""
     if ptr_size_override > 0:
-        ptr_elems = ptr_size_override
+        return ptr_size_override
     elif len(int_values) == 0:
-        ptr_elems = 1024 * 1024
+        return 1024 * 1024
     elif len(int_values) == 1:
-        ptr_elems = int_values[0]
+        return int_values[0]
     else:
         sv = sorted(int_values, reverse=True)
-        ptr_elems = sv[0] * sv[1]
-    return min(ptr_elems, 256 * 1024 * 1024)
+        return min(sv[0] * sv[1], 256 * 1024 * 1024)
 
 
 def _fmt_vals(vals, width=10):
-    """Format a list of numeric values for compact display."""
     return "[" + ", ".join(f"{v:>{width}.4f}" for v in vals) + "]"
 
 
 def _color(text: str, ok: bool) -> str:
-    """ANSI color: green for pass, red for fail (only when stdout is a tty)."""
     if not sys.stdout.isatty():
         return text
     code = "\033[92m" if ok else "\033[91m"
@@ -217,13 +353,6 @@ def _color(text: str, ok: bool) -> str:
 # ---------------------------------------------------------------------------
 
 def _time_iterations(fn, warmup: int, repeat: int) -> list:
-    """Run fn for warmup + repeat iterations and return per-iter ms timings.
-
-    start_event / end_event are placed outside the loop so that only GPU
-    execution time is measured and CPU scheduling overhead between iterations
-    is excluded.  The total elapsed time is divided by ``repeat`` to get the
-    average per-iteration latency.
-    """
     for _ in range(warmup):
         fn()
     torch.cuda.synchronize()
@@ -253,7 +382,6 @@ def _stats(times_ms: list):
 
 def _print_results(label, avg, med, mn, mx, total_ptr_bytes, ptr_elems,
                    cu_file, dim_values, arch, ref_avg=None):
-    """Print benchmark results table; append speedup line when ref_avg is given."""
     print()
     print("=" * 55)
     print(f"  {label}")
@@ -281,7 +409,6 @@ def _print_results(label, avg, med, mn, mx, total_ptr_bytes, ptr_elems,
 # ---------------------------------------------------------------------------
 
 def _validate_outputs(kernel_tensors, ref_tensors, output_params, atol, rtol):
-    """Compare kernel and reference output tensors. Returns True if all pass."""
     PREVIEW = 8
     print(f"\n[validate] {len(output_params)} output tensor(s)\n")
 
@@ -324,32 +451,16 @@ def _validate_outputs(kernel_tensors, ref_tensors, output_params, atol, rtol):
 
 
 # ---------------------------------------------------------------------------
-# Setup: compile + allocate buffers
+# Main pipeline
 # ---------------------------------------------------------------------------
 
-def _setup(cu_file, dim_values, ptr_size_override, arch, seed=None):
-    """Parse signature, compile kernel, allocate tensors.
-
-    Returns:
-        lib           – loaded shared library
-        params        – parsed parameter list
-        kernel_tensors – dict of GPU tensors (keyed by param name)
-        kernel_call_args – ctypes arg list for lib.solve(...)
-        argtypes      – ctypes argtypes list
-        output_params – list of (pname, ptype) for non-const pointer params
-        ptr_elems     – element count used for pointer buffers
-        total_ptr_bytes – total bytes across all pointer tensors
-    """
-    # -- signature + compile --------------------------------------------------
+def _setup(cu_file, dim_values, ptr_size_override, arch, seed=None, force_recompile=False):
     params = parse_solve_signature(cu_file)
     sig_str = ", ".join(f"{'const ' if c else ''}{t} {n}" for t, n, c in params)
     print(f"[signature] solve({sig_str})\n")
 
-    so_file = os.path.splitext(cu_file)[0] + ".so"
-    compile_cu(cu_file, so_file, arch)
-    lib = ctypes.CDLL(so_file)
+    cuda, module, kernel, ptx_file = _compile_and_load(cu_file, arch, force_recompile=force_recompile)
 
-    # -- validate dimensions --------------------------------------------------
     for ptype, pname, _ in params:
         if ptype in INT_TYPES and pname not in dim_values:
             raise ValueError(
@@ -360,14 +471,11 @@ def _setup(cu_file, dim_values, ptr_size_override, arch, seed=None):
                 for ptype, pname, _ in params if ptype in INT_TYPES]
     ptr_elems = _determine_ptr_elems(int_vals, ptr_size_override)
 
-    # -- allocate tensors -----------------------------------------------------
     if seed is not None:
         torch.manual_seed(seed)
 
     kernel_tensors: dict = {}
     output_params = []
-    kernel_call_args = []
-    argtypes = []
 
     print("[buffers]")
     for ptype, pname, is_const in params:
@@ -380,8 +488,6 @@ def _setup(cu_file, dim_values, ptr_size_override, arch, seed=None):
             kernel_tensors[pname] = t
             if not is_const:
                 output_params.append((pname, ptype))
-            kernel_call_args.append(ctypes.c_void_p(t.data_ptr()))
-            argtypes.append(ctypes.c_void_p)
             role = "input" if is_const else "output"
             eb   = t.element_size()
             print(
@@ -389,43 +495,22 @@ def _setup(cu_file, dim_values, ptr_size_override, arch, seed=None):
                 f"{ptr_elems} elems  ({ptr_elems * eb / 1024 / 1024:.1f} MB)"
             )
         elif ptype in SUPPORTED_TYPES:
-            _, ctype = SUPPORTED_TYPES[ptype]
             val = dim_values[pname]
-            kernel_call_args.append(ctype(val))
-            argtypes.append(ctype)
             print(f"  {pname:>10s} : {ptype:<16s} = {val}")
-
-    lib.solve.restype  = None
-    lib.solve.argtypes = argtypes
 
     total_ptr_bytes = sum(t.nelement() * t.element_size()
                           for t in kernel_tensors.values())
 
-    return (lib, params, kernel_tensors, kernel_call_args,
-            argtypes, output_params, ptr_elems, total_ptr_bytes)
+    return (cuda, kernel, params, kernel_tensors, output_params,
+            ptr_elems, total_ptr_bytes)
 
-
-# ---------------------------------------------------------------------------
-# Main pipeline
-# ---------------------------------------------------------------------------
 
 def run(cu_file, ref_file, dim_values, warmup, repeat,
-        ptr_size_override, arch, atol, rtol, seed):
-    """Main benchmark pipeline.
-
-    Steps:
-      1. If ref provided: run kernel + ref once and validate correctness.
-         Exit immediately on failure.
-      2. If ref provided: benchmark reference.
-      3. Benchmark kernel.
-      4. Print summary results.
-    """
+        ptr_size_override, arch, atol, rtol, seed, force_recompile=False):
     has_ref = bool(ref_file)
 
-    # -- load reference module ------------------------------------------------
     ref_fn = None
     ref_kwargs = None
-    ref_tensors = None
     _atol = atol
     _rtol = rtol
 
@@ -437,9 +522,10 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
         print(f"[reference] {ref_file}  (atol={_atol}, rtol={_rtol})\n")
 
     # -- compile + allocate ---------------------------------------------------
-    (lib, params, kernel_tensors, kernel_call_args,
-     argtypes, output_params, ptr_elems, total_ptr_bytes) = _setup(
-        cu_file, dim_values, ptr_size_override, arch, seed=seed if has_ref else None
+    (cuda, kernel, params, kernel_tensors, output_params,
+     ptr_elems, total_ptr_bytes) = _setup(
+        cu_file, dim_values, ptr_size_override, arch,
+        seed=seed if has_ref else None, force_recompile=force_recompile
     )
 
     if not output_params and has_ref:
@@ -447,13 +533,11 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
               "Nothing to validate.", file=sys.stderr)
 
     # -------------------------------------------------------------------------
-    # Step 1: correctness check (only when ref is provided)
+    # Step 1: correctness check
     # -------------------------------------------------------------------------
     if has_ref:
-        # Build ref tensors as clones from the same seed-initialised kernel tensors
         ref_tensors = {pname: t.clone() for pname, t in kernel_tensors.items()}
 
-        # Build ref kwargs
         ref_kwargs = {}
         for ptype, pname, _ in params:
             if ptype in DTYPE_MAP:
@@ -461,12 +545,12 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
             else:
                 ref_kwargs[pname] = dim_values[pname]
 
-        print("\n[kernel]    running … ", end="", flush=True)
-        lib.solve(*kernel_call_args)
+        print("\n[kernel]    running ... ", end="", flush=True)
+        _launch_kernel(cuda, kernel, params, dim_values, kernel_tensors)
         torch.cuda.synchronize()
         print("done")
 
-        print("[reference] running … ", end="", flush=True)
+        print("[reference] running ... ", end="", flush=True)
         ref_fn(**ref_kwargs)
         torch.cuda.synchronize()
         print("done")
@@ -475,7 +559,6 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
             kernel_tensors, ref_tensors, output_params, _atol, _rtol
         )
 
-        # -- validation summary -----------------------------------------------
         print("=" * 60)
         print(f"  Kernel    : {os.path.basename(cu_file)}")
         print(f"  Reference : {os.path.basename(ref_file)}")
@@ -493,7 +576,7 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
             sys.exit(1)
 
     # -------------------------------------------------------------------------
-    # Step 2: benchmark reference (only when ref is provided)
+    # Step 2: benchmark reference
     # -------------------------------------------------------------------------
     times_ref = None
     if has_ref:
@@ -505,19 +588,17 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
     # Step 3: benchmark kernel
     # -------------------------------------------------------------------------
     if not has_ref:
-        # Without ref, show before/after previews for a quick sanity check
         PREVIEW = 8
         tensor_info = [
             (pname, ptype, "input" if is_const else "output", kernel_tensors[pname])
             for ptype, pname, is_const in params if ptype in DTYPE_MAP
         ]
-
         print(f"\n[preview] first {PREVIEW} elements before kernel call:")
         for name, ptype, role, t in tensor_info:
             tag = "IN " if role == "input" else "OUT"
             print(f"  {tag} {name:>6s} = {_fmt_vals(t[:PREVIEW].cpu().tolist())}")
 
-        lib.solve(*kernel_call_args)
+        _launch_kernel(cuda, kernel, params, dim_values, kernel_tensors)
         torch.cuda.synchronize()
 
         print(f"\n[preview] first {PREVIEW} elements after 1 kernel call:")
@@ -526,7 +607,21 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
             print(f"  {tag} {name:>6s} = {_fmt_vals(t[:PREVIEW].cpu().tolist())}")
 
     print(f"\n[warmup] kernel  {warmup} iterations ...")
-    times_kernel = _time_iterations(lambda: lib.solve(*kernel_call_args), warmup, repeat)
+    for _ in range(warmup):
+        _launch_kernel(cuda, kernel, params, dim_values, kernel_tensors)
+    torch.cuda.synchronize()
+
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event   = torch.cuda.Event(enable_timing=True)
+
+    start_event.record()
+    for _ in range(repeat):
+        _launch_kernel(cuda, kernel, params, dim_values, kernel_tensors)
+    end_event.record()
+    torch.cuda.synchronize()
+
+    avg_ms = start_event.elapsed_time(end_event) / repeat
+    times_kernel = [avg_ms] * repeat
     print(f"[bench]  kernel  {repeat} iterations ... done")
 
     # -------------------------------------------------------------------------
@@ -559,31 +654,21 @@ def run(cu_file, ref_file, dim_values, warmup, repeat,
 def main():
     parser = argparse.ArgumentParser(
         description="Generic CUDA kernel benchmark (with optional validation)",
-        epilog=(
-            "Dimension args: pass --NAME=VALUE for each int param in solve().\n"
-            "ref.py must define `reference(**kwargs)` and may set module-level atol/rtol."
-        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("cu_file", help="Path to .cu solution file")
     parser.add_argument("--ref", type=str, default="",
-                        help="Path to reference .py file; enables validation + reference benchmark")
-    parser.add_argument("--warmup", type=int, default=10,
-                        help="Warmup iterations (default: 10)")
-    parser.add_argument("--repeat", type=int, default=20,
-                        help="Benchmark iterations (default: 20)")
-    parser.add_argument("--ptr-size", type=int, default=0,
-                        help="Override element count for all pointer buffers")
-    parser.add_argument("--arch", type=str, default="",
-                        help="GPU arch, e.g. sm_90 (auto-detected if omitted)")
-    parser.add_argument("--gpu", type=int, default=0,
-                        help="GPU device index (default: 0)")
-    parser.add_argument("--atol", type=float, default=1e-4,
-                        help="Absolute tolerance for validation (default: 1e-4)")
-    parser.add_argument("--rtol", type=float, default=1e-3,
-                        help="Relative tolerance for validation (default: 1e-3)")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for input tensors when validating (default: 42)")
+                        help="Path to reference .py file")
+    parser.add_argument("--warmup", type=int, default=10)
+    parser.add_argument("--repeat", type=int, default=20)
+    parser.add_argument("--ptr-size", type=int, default=0)
+    parser.add_argument("--arch", type=str, default="")
+    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--atol", type=float, default=1e-4)
+    parser.add_argument("--rtol", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--force-recompile", action="store_true",
+                        help="Force PTX recompilation even if cached")
 
     args, unknown = parser.parse_known_args()
 
@@ -609,6 +694,7 @@ def main():
         atol              = args.atol,
         rtol              = args.rtol,
         seed              = args.seed,
+        force_recompile   = args.force_recompile,
     )
 
 

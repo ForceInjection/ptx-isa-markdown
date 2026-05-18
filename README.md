@@ -45,6 +45,16 @@
 "使用 cuda-code-generator，帮我写一个矩阵转置的 CUDA kernel，并在实现前查阅 cuda-knowledge 和 cuda-samples 中的相关文档与范例。"
 ```
 
+也可以直接在命令行中检索和运行示例：
+
+```bash
+# 查看官方 vectorAdd 范例
+cat cuda-samples/cpp/0_Introduction/vectorAdd/vectorAdd.cu
+
+# 运行 benchmark 示例
+python3 skills/kernel-benchmarker/scripts/benchmark.py examples/vectorAdd/solution.cu --N=1000000
+```
+
 ---
 
 ## 3. 文档抓取工具
@@ -76,9 +86,11 @@ uv run nvidia_doc_sync/scrape_cuda_docs.py driver --skip-download
 
 ---
 
-## 4. 校验工具
+## 4. 校验与测试
 
-本项目内置了三条校验命令，可随时验证技能文件的完整性和一致性：
+本项目内置了多层次的校验与测试工具。
+
+### 4.1 静态校验
 
 ```bash
 # 校验各技能间的接口一致性（子技能引用、瓶颈类型对齐、路径解析等）
@@ -97,3 +109,50 @@ uv run scripts/check_links.py
 > ```bash
 > git submodule update --init
 > ```
+
+### 4.2 Kernel 基准测试
+
+对 CUDA kernel（`extern "C" __global__ void solve(...)`）进行编译、执行和性能测试，支持与 PyTorch 参考实现对比验证。示例文件在 `examples/vectorAdd/`：
+
+```bash
+# 仅基准测试（无参考对比）
+python3 skills/kernel-benchmarker/scripts/benchmark.py examples/vectorAdd/solution.cu \
+    --N=1000000 --repeat=20
+
+# 编译 + 正确性验证 + 性能对比
+python3 skills/kernel-benchmarker/scripts/benchmark.py examples/vectorAdd/solution.cu \
+    --ref=examples/vectorAdd/ref.py --N=1000000 --repeat=20
+```
+
+kernel 通过 `nvcc -ptx` 编译为 PTX，经由 CUDA Driver API (`cuLaunchKernel`) 在同一进程中加载执行。PTX 文件自动缓存，首次后的运行跳过编译。
+
+### 4.3 NCU Profiling
+
+通过 `ncu_profile.py` 构建自包含 profiling 可执行文件（无子进程，NCU 不会断连）：
+
+```bash
+# 构建 profiling 专用可执行文件
+python3 skills/kernel-benchmarker/scripts/ncu_profile.py examples/vectorAdd/solution.cu \
+    --N=1000000 --build-only
+
+# 默认模式（--set launch），所有环境可用（容器/云主机等无需 PMU 权限）
+ncu --kernel-name solve --launch-skip 10 --launch-count 1 \
+    --set launch -o report -f ./examples/vectorAdd/solution_bench --N=1000000
+
+# 详细性能指标模式（需宿主机 PMU 权限: perf_event_paranoid=0）
+# ncu --kernel-name solve ... --set full ...
+```
+
+> 样例报告见 [`examples/ncu-profile/`](examples/ncu-profile/)，含 `.ncu-rep` 二进制文件和文本导出。
+
+### 4.4 查阅官方代码范例
+
+通过 `cuda-samples` 技能索引查找 NVIDIA 官方 CUDA 代码范例：
+
+```bash
+# 按模式搜索
+grep -r "reduction\|GEMM\|CUDA Graph" skills/cuda-samples/SKILL.md
+
+# 查看完整源码（需先 git submodule update --init）
+cat cuda-samples/cpp/0_Introduction/vectorAdd/vectorAdd.cu
+```
