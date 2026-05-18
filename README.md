@@ -16,7 +16,7 @@
 
 ## 2. 技能概览和使用
 
-本项目采用多技能单体仓库（Monorepo）的结构进行组织，`skills/` 目录下的各个 Agent 技能不仅可以独立运作，还能相互配合形成一套自动化的性能分析与优化工作流。下面将详细介绍这些技能的作用以及如何在 AI IDE 中进行集成调用。
+本项目采用多技能单体仓库（Monorepo）的结构进行组织，`skills/` 目录下的各个 Agent 技能不仅可以独立运作，还能相互配合形成一套自动化的性能分析与优化工作流。
 
 ### 2.1 技能概览
 
@@ -33,14 +33,9 @@
 
 ### 2.2 快速开始
 
-无论是在 Claude Code 还是 Trae 中，本项目提供的技能都可以通过简单的目录加载方式快速接入到日常开发工作流中。
+将 `skills/` 目录加载到支持的 AI IDE（Claude Code、Trae、Qoder 等）中即可启用所有技能。
 
-大多数 AI IDE 都支持从目录加载技能。我们可以一次性加载整个目录，或者只选择特定的技能。
-
-**对于 Qoder / Trae / Claude Code：**
-直接将 `skills/` 目录加载为你的工作上下文，或者通过 IDE 提供的技能管理界面安装它们。
-
-加载完成后，你可以直接在对话中通过自然语言提示词要求 Agent 使用对应的技能，例如：
+加载完成后，在对话中通过自然语言即可调用对应技能，例如：
 
 ```text
 # 查阅官方范例寻找代码模式
@@ -78,3 +73,27 @@ uv run nvidia_doc_sync/scrape_cuda_docs.py nccl
 # 跳过网络下载，仅对缓存的原始文件重新运行清理流程
 uv run nvidia_doc_sync/scrape_cuda_docs.py driver --skip-download
 ```
+
+---
+
+## 4. 校验工具
+
+本项目内置了三条校验命令，可随时验证技能文件的完整性和一致性：
+
+```bash
+# 校验各技能间的接口一致性（子技能引用、瓶颈类型对齐、路径解析等）
+python3 scripts/check_skills.py
+
+# 校验文档中的文件数/大小与磁盘实际内容一致
+python3 scripts/check_counts.py
+
+# 校验 cuda-samples 参考文件中的路径在子模块中均存在
+uv run scripts/check_links.py
+```
+
+> [!NOTE]
+> `check_links.py` 依赖 `cuda-samples` 子模块。首次使用前需执行：
+>
+> ```bash
+> git submodule update --init
+> ```
