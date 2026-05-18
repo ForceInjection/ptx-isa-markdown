@@ -64,22 +64,37 @@ grep -r "ncclAllReduce" skills/cuda-knowledge/references/nccl-docs/api/
 grep -r "__nv_fp8_e4m3\|__nv_fp8_e5m2" skills/cuda-knowledge/references/cuda-math-docs/
 ```
 
+### Finding Code Patterns (cuda-samples)
+
+```bash
+# Find samples by pattern or API (search reference files for code)
+grep -r "cublasSgemm\|cudaStreamBeginCapture\|__shfl_down_sync" skills/cuda-samples/references/
+
+# Find samples by name or architecture in the quick reference index
+grep -r "reduction\|GEMM\|CUDA Graph" skills/cuda-samples/SKILL.md
+
+# Find samples requiring specific GPU architecture
+grep -r "SM 8.0\|SM 9.0\|Hopper\|Ampere" skills/cuda-samples/SKILL.md
+```
+
 ### No lint, test, or build commands are configured.
 
 ## Architecture
 
 ### Skills Pipeline (skills/)
 
-Five skills form a complete optimization loop, orchestrated by `cuda-optimizer`:
+Six skills form a complete optimization loop, orchestrated by `cuda-optimizer`:
 
 ```
+cuda-knowledge (API reference docs)  +  cuda-samples (code pattern index)
+         ↓                                    ↓
 cuda-optimizer (orchestrator)
     ├── kernel-benchmarker   → compile, validate, benchmark
     ├── ncu-rep-analyzer     → NCU profile, diagnose bottleneck, suggest fixes
     └── cuda-code-generator  → generate/rewrite .cu files with optimizations
 ```
 
-All three action skills are instructed to ground their work in `cuda-knowledge` (~1040 markdown files from NVIDIA docs) to reduce hallucination. The optimizer drives this loop: **benchmark → evaluate exit conditions → NCU profile → implement optimizations → repeat** until performance converges (<2% improvement over 2 consecutive rounds).
+`cuda-knowledge` (~1040 markdown files) provides API reference; `cuda-samples` (~34 KB, ~50 curated entries) provides concrete working code patterns from official NVIDIA samples with GitHub permalinks and key snippets. All three action skills ground their work in both to reduce hallucination. The optimizer drives this loop: **benchmark → evaluate exit conditions → NCU profile → implement optimizations → repeat** until performance converges (<2% improvement over 2 consecutive rounds).
 
 ### Kernel Interface Convention
 
@@ -113,8 +128,11 @@ skills/
   cuda-knowledge/references/     # ~1040 .md files (PTX, cuBLAS, Runtime, Driver, Math, NCCL)
     *-docs/                      # Scraped documentation organized by chapter/module
     *.md                         # Search guides with grep patterns per API
+  cuda-samples/
+    SKILL.md                     # Quick reference table, optimization mapping, arch compatibility
+    references/                  # 8 topic files with detailed code snippets & GitHub permalinks
   cuda-optimizer/SKILL.md        # Orchestrator — drives the full optimization loop
-  cuda-code-generator/SKILL.md   # Generates .cu files, must consult cuda-knowledge for API accuracy
+  cuda-code-generator/SKILL.md   # Generates .cu files, must consult cuda-knowledge + cuda-samples
   ncu-rep-analyzer/SKILL.md      # NCU profiling + bottleneck classification + optimization suggestions
   kernel-benchmarker/SKILL.md    # Compile, validate, benchmark via benchmark.py
 nvidia_doc_sync/                 # Documentation scraper and its README
@@ -125,4 +143,4 @@ nvidia_doc_sync/                 # Documentation scraper and its README
 - **Skills are independent but chainable** — each skill can be invoked standalone or as part of the optimizer loop.
 - **Optimizer never stops mid-loop** — after each sub-skill returns, the orchestrator immediately proceeds to the next step. The output of one sub-skill is the input for the next.
 - **New kernel versions get timestamped filenames** — `solution_opt_20260316_153045.cu`, never overwrite the original.
-- **Knowledge-grounding is mandatory** — code-generator and ncu-rep-analyzer must grep `cuda-knowledge/references/` before generating code or recommendations involving complex APIs (cuBLASLt, Tensor Core, FP8 types).
+- **Knowledge-grounding is mandatory** — code-generator and ncu-rep-analyzer must consult both `cuda-knowledge/references/` (API signatures) and `cuda-samples/SKILL.md` (working code patterns) before generating code or recommendations involving complex APIs (cuBLASLt, Tensor Core, FP8 types).

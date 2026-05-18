@@ -201,11 +201,12 @@ grep -A 10 "cudaErrorInvalidValue" skills/cuda-knowledge/references/cuda-runtime
 
 ## 5. Agent Skill 矩阵
 
-在基础的知识检索之外，本项目扩展出了一个完整的 Agent 技能矩阵（位于 `skills/` 目录），旨在为 Qoder 等 AI 助手提供一套自动化的 CUDA kernel 优化流水线。该矩阵包含以下五个核心技能：
+在基础的知识检索之外，本项目扩展出了一个完整的 Agent 技能矩阵（位于 `skills/` 目录），旨在为 Qoder 等 AI 助手提供一套自动化的 CUDA kernel 优化流水线。该矩阵包含以下六个核心技能：
 
 - **`cuda-knowledge`**：知识库核心，包含 1040+ Markdown 格式的官方文档，为其他技能提供严谨的 API 约束与底层知识。
+- **`cuda-samples`**：官方范例索引，精选 50+ NVIDIA CUDA Samples，按模式（规约/扫描/GEMM/CUDA Graph 等）编排，提供关键代码片段。
 - **`cuda-optimizer`**：核心调度技能，负责驱动“分析 - 优化 - 验证”的闭环迭代。
-- **`cuda-code-generator`**：代码生成与修改技能，被严格指令必须基于 `cuda-knowledge` 查阅 API 细节，避免 AI 幻觉。
+- **`cuda-code-generator`**：代码生成与修改技能，被严格指令必须基于 `cuda-knowledge` 和 `cuda-samples` 查阅 API 细节与代码范例，避免 AI 幻觉。
 - **`ncu-rep-analyzer`**：NCU 性能分析技能，负责解读性能分析报告，识别 memory 瓶颈或计算瓶颈。
 - **`kernel-benchmarker`**：编译与基准测试技能，负责代码的实际编译、正确性验证及性能测试。
 

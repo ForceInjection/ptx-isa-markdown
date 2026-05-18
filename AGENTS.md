@@ -73,10 +73,12 @@ skills/
 ├── cuda-knowledge/             # Knowledge base skill (formerly cuda_skill)
 │   ├── SKILL.md                # Defines how to search the documentation
 │   └── references/             # ~1040 markdown files (PTX, cuBLAS, Math API, etc.)
+├── cuda-samples/               # Curated NVIDIA CUDA Samples index
+│   └── SKILL.md                # 50+ code patterns with GitHub permalinks and snippets
 ├── cuda-optimizer/             # The main orchestrator skill
 │   └── SKILL.md                # Drives the profile-analyze-optimize loop
 ├── cuda-code-generator/        # Code generation and modification skill
-│   ├── SKILL.md                # Instructed to search cuda-knowledge for API accuracy
+│   ├── SKILL.md                # Instructed to search cuda-knowledge + cuda-samples
 │   └── references/
 │       └── cuda-optimization-strategies.md
 ├── ncu-rep-analyzer/           # NCU profiling and bottleneck analysis skill
@@ -86,7 +88,7 @@ skills/
     └── scripts/benchmark.py
 ```
 
-The action skills (`cuda-code-generator`, `ncu-rep-analyzer`, `kernel-benchmarker`) are strictly instructed to ground their operations in the documentation provided by `cuda-knowledge`, reducing hallucination and improving the depth of optimization.
+`cuda-samples` provides a curated index of ~50 official NVIDIA CUDA code patterns, bridging the gap between API reference (`cuda-knowledge`) and code generation (`cuda-code-generator`). The action skills (`cuda-code-generator`, `ncu-rep-analyzer`, `kernel-benchmarker`) are strictly instructed to ground their operations in both the documentation from `cuda-knowledge` and the code patterns from `cuda-samples`, reducing hallucination and improving the depth of optimization.
 
 ### Key design decisions
 
