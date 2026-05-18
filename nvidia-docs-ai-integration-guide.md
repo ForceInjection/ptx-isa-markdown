@@ -9,14 +9,29 @@
 
 ## 目录
 
-- [1. 你是否遇到过这些场景？](#1-你是否遇到过这些场景)
-- [2. 这个项目是什么](#2-这个项目是什么)
-- [3. 覆盖了哪些文档](#3-覆盖了哪些文档)
-- [4. 六个真实场景](#4-六个真实场景)
-- [5. Agent Skill 矩阵](#5-agent-skill-矩阵)
-- [6. 怎么使用](#6-怎么使用)
-- [7. 设计上的几个决策](#7-设计上的几个决策)
-- [8. 结语](#8-结语)
+- [工欲善其事，必先利其器：面向 Vibe Coding 的 CUDA 代码技能库介绍](#工欲善其事必先利其器面向-vibe-coding-的-cuda-代码技能库介绍)
+  - [目录](#目录)
+  - [1. 你是否遇到过这些场景？](#1-你是否遇到过这些场景)
+  - [2. 这个项目是什么](#2-这个项目是什么)
+  - [3. 覆盖了哪些文档](#3-覆盖了哪些文档)
+  - [4. 五个命令行检索场景](#4-五个命令行检索场景)
+    - [4.1 场景一：读懂反编译出的 PTX 指令](#41-场景一读懂反编译出的-ptx-指令)
+    - [4.2 场景二：FP8 量化推理的 cuBLAS 参数](#42-场景二fp8-量化推理的-cublas-参数)
+    - [4.3 场景三：Tensor Parallel 通信调优与 hang 排查](#43-场景三tensor-parallel-通信调优与-hang-排查)
+    - [4.4 场景四：half/bfloat16 精度问题排查](#44-场景四halfbfloat16-精度问题排查)
+    - [4.5 场景五：KV cache 内存分配的 Driver API 错误](#45-场景五kv-cache-内存分配的-driver-api-错误)
+  - [5. Agent Skill 矩阵](#5-agent-skill-矩阵)
+  - [6. 怎么使用](#6-怎么使用)
+    - [6.1 让 AI IDE 直接回答 CUDA 问题](#61-让-ai-ide-直接回答-cuda-问题)
+    - [6.2 直接用现成文档](#62-直接用现成文档)
+    - [6.3 更新到最新版本](#63-更新到最新版本)
+    - [6.4 装进 AI IDE](#64-装进-ai-ide)
+  - [7. 设计上的几个决策](#7-设计上的几个决策)
+    - [7.1 为什么是单文件爬虫](#71-为什么是单文件爬虫)
+    - [7.2 为什么做两阶段清洗](#72-为什么做两阶段清洗)
+    - [7.3 渐进式 Skill 设计与多技能架构](#73-渐进式-skill-设计与多技能架构)
+    - [7.4 可扩展架构](#74-可扩展架构)
+  - [8. 结语](#8-结语)
 
 ---
 
@@ -40,36 +55,36 @@
 
 项目地址：[ForceInjection/cuda-code-skill](https://github.com/ForceInjection/cuda-code-skill)（fork 自 [technillogue/ptx-isa-markdown](https://github.com/technillogue/ptx-isa-markdown)）
 
-原始项目只做了一件事：把 PTX ISA 这份 5 MB 的单页 HTML 拆成 405 个 Markdown 文件，让你可以用 `grep` 搜索。这个想法很好，但覆盖面太窄—— vLLM 开发日常还需要 cuBLAS 、 NCCL 、 CUDA Math API 等等。
+原始项目只做了一件事：把 PTX ISA 这份 5 MB 的单页 HTML 拆成 405 个 Markdown 文件，让你可以用 `grep` 搜索。这个想法很好，但覆盖面太窄——vLLM 开发日常还需要 cuBLAS、NCCL、CUDA Math API 等等。
 
 **我们做的事情是把这个思路系统化。**
 
-核心产出是一个统一的文档爬虫 `scrape_cuda_docs.py` ，加上一套可以直接装进 AI IDE 的多技能（ Skill ）目录。一句话概括：
+核心产出是一个统一的文档爬虫 `nvidia_doc_sync/scrape_cuda_docs.py`，加上一套可以直接装进 AI IDE 的多技能（Skill）目录。一句话概括：
 
-> **把 NVIDIA 的 6 套官方文档，转换成 1000+ 个本地 Markdown 文件，结合 Agent 技能矩阵，让你和 AI 都能高效检索与自动优化 CUDA 代码。**
+> **把 NVIDIA 的 6 套官方文档，转换成 1043 个本地 Markdown 文件，结合 Agent 技能矩阵，让你和 AI 都能高效检索与自动优化 CUDA 代码。**
 
 ---
 
 ## 3. 覆盖了哪些文档
 
-转换后的文档覆盖 vLLM 开发最常用的 6 套参考资料，总计约 8.7 MB、1032 个文件：
+转换后的文档覆盖 vLLM 开发最常用的 6 套参考资料，总计约 8.6 MB、1032 个文件（含搜索指南共 1043 个）：
 
-| 文档集                | 文件数 | 大小   | 主要内容                                            |
-| --------------------- | ------ | ------ | --------------------------------------------------- |
-| PTX ISA 9.1           | 405    | 2.3 MB | 完整指令集， `wgmma` 、 `cp.async` 、 `mbarrier` 等 |
-| CUDA Runtime API 13.1 | 104    | 1.2 MB | 37 模块 + 66 数据结构                               |
-| CUDA Driver API 13.1  | 129    | 1.2 MB | 49 模块（含虚拟内存、 context 管理）                |
-| CUDA Math API 13.x    | 41     | 0.5 MB | `half` / `bfloat16` / FP8 内置函数，类型转换        |
-| cuBLAS 13.2           | 319    | 2.9 MB | GEMM 、 `cuBLASLt` 、 FP8 GEMM 、 epilogue 融合     |
-| NCCL                  | 34     | 0.5 MB | API + 使用指南 + 全量环境变量                       |
+| 文档集                | 文件数 | 大小   | 主要内容                                       |
+| --------------------- | ------ | ------ | ---------------------------------------------- |
+| PTX ISA 9.1           | 405    | 2.3 MB | 完整指令集，`wgmma`、`cp.async`、`mbarrier` 等 |
+| CUDA Runtime API 13.1 | 104    | 1.2 MB | 37 模块 + 66 数据结构                          |
+| CUDA Driver API 13.1  | 129    | 1.2 MB | 49 模块（含虚拟内存、 context 管理）           |
+| CUDA Math API 13.x    | 41     | 528 KB | `half` / `bfloat16` / FP8 内置函数，类型转换   |
+| cuBLAS 13.2           | 319    | 2.9 MB | GEMM、`cuBLASLt`、FP8 GEMM、epilogue 融合      |
+| NCCL                  | 34     | 516 KB | API + 使用指南 + 全量环境变量                  |
 
-文档经过清洗：去掉重复 TOC 、导航栏、冗余 URL 、版权声明等噪音，**体积压缩 76-83%**，只保留你真正需要的内容。
+文档经过清洗：去掉重复 TOC、导航栏、冗余 URL、版权声明等噪音，**体积压缩 76-83%**，只保留你真正需要的内容。
 
 ---
 
-## 4. 六个真实场景
+## 4. 五个命令行检索场景
 
-下面用 6 个 vLLM 开发中的真实场景，演示这个工具怎么用。
+下面用 5 个 vLLM 开发中的命令行检索场景，演示这个工具怎么用。
 
 ### 4.1 场景一：读懂反编译出的 PTX 指令
 
@@ -115,7 +130,7 @@ grep -A 30 "cublasGemmEx" skills/cuda-knowledge/references/cublas-docs/2-using-t
 grep -A 20 "cublasLtMatmul" skills/cuda-knowledge/references/cublas-docs/3-using-the-cublaslt-api/
 ```
 
-epilogue 参数（ `CUBLASLT_EPILOGUE_RELU` 、 `CUBLASLT_EPILOGUE_BIAS` ）的说明也在里面。
+epilogue 参数（`CUBLASLT_EPILOGUE_RELU`、`CUBLASLT_EPILOGUE_BIAS`）的说明也在里面。
 
 ### 4.3 场景三：Tensor Parallel 通信调优与 hang 排查
 
@@ -155,7 +170,7 @@ grep -A 8 "__hfma2\b" skills/cuda-knowledge/references/cuda-math-docs/modules/gr
 
 函数签名、精度说明、舍入行为直接出来。
 
-如果是 FP8 ↔ float 转换的精度问题（ vLLM KV cache 量化场景常见）：
+如果是 FP8 ↔ float 转换的精度问题（vLLM KV cache 量化场景常见）：
 
 ```bash
 # 查看 FP8 类型转换的语义
@@ -182,27 +197,6 @@ Runtime 侧的错误码查询：
 grep -A 10 "cudaErrorInvalidValue" skills/cuda-knowledge/references/cuda-runtime-docs/
 ```
 
-### 4.6 让 AI IDE 直接回答 CUDA 问题
-
-以上场景如果你在用 TRAE、Qoder 或 Claude Code 等支持 Skill 机制的 AI IDE 开发，可以更进一步——把这套文档装成一个 Skill，让 AI 直接从本地文档里检索答案，而不是靠训练数据（可能过时）或联网搜索（权限问题）。
-
-**安装只需一行命令：**
-
-```bash
-# 将 cuda-knowledge skill 复制到目标目录
-cp -r skills/cuda-knowledge ~/.trae/skills/
-```
-
-装好之后，直接问你的 AI 助手：
-
-> "vLLM 里 FP8 WGMMA m64n16k16 的 D 矩阵寄存器布局是什么？"
-> "cublasGemmEx 传 CUDA_R_8F_E4M3 时 computeType 该怎么选？"
-> "NCCL_ALGO=Ring 和 Tree 分别适合什么拓扑？"
-
-AI 会触发 Skill （关键词匹配 `SKILL.md` 的 description frontmatter ），从本地 `ptx-docs` / `cublas-docs` / `nccl-docs` 里检索相关章节，给出带文档引用的精准回答。
-
-核心设计是**渐进式披露**： `SKILL.md` （~ 13KB ）常驻 context window ， 1000+ 个参考文件按需加载，不浪费 token 。
-
 ---
 
 ## 5. Agent Skill 矩阵
@@ -221,9 +215,33 @@ AI 会触发 Skill （关键词匹配 `SKILL.md` 的 description frontmatter ）
 
 ## 6. 怎么使用
 
-以下提供三种使用方式，从最简单的直接检索到集成进 AI 工具，按需选择。
+以下提供四种使用方式，从直接检索到集成进 AI IDE，按需选择。
 
-### 6.1 直接用现成文档
+### 6.1 让 AI IDE 直接回答 CUDA 问题
+
+如果你在用 Trae、Qoder 或 Claude Code 等支持 Skill 机制的 AI IDE 开发，可以把这套文档装成一个 Skill，让 AI 直接从本地文档里检索答案，而不是靠训练数据（可能过时）或联网搜索（权限问题）。
+
+**安装只需一行命令：**
+
+```bash
+# 安装 cuda-knowledge 即可获取文档检索能力
+cp -r skills/cuda-knowledge ~/.trae/skills/
+
+# 如需完整优化流水线，安装全部 skill
+cp -r skills/* ~/.trae/skills/
+```
+
+装好之后，直接问你的 AI 助手：
+
+> "vLLM 里 FP8 WGMMA m64n16k16 的 D 矩阵寄存器布局是什么？"
+> "cublasGemmEx 传 CUDA_R_8F_E4M3 时 computeType 该怎么选？"
+> "NCCL_ALGO=Ring 和 Tree 分别适合什么拓扑？"
+
+AI 会触发 Skill（关键词匹配 `SKILL.md` 的 description frontmatter），从本地 `ptx-docs` / `cublas-docs` / `nccl-docs` 里检索相关章节，给出带文档引用的精准回答。
+
+核心设计是**渐进式披露**：`SKILL.md`（~13KB）常驻 context window，1000+ 个参考文件按需加载，不浪费 token。
+
+### 6.2 直接用现成文档
 
 clone 仓库后， `skills/cuda-knowledge/references/` 目录下已经有完整的文档，直接 `grep` 即可：
 
@@ -241,12 +259,12 @@ grep -E "^## NCCL_" skills/cuda-knowledge/references/nccl-docs/env.md
 grep "^__device__" skills/cuda-knowledge/references/cuda-math-docs/modules/group__cuda__math__intrinsic__half.md
 ```
 
-### 6.2 更新到最新版本
+### 6.3 更新到最新版本
 
 NVIDIA 文档版本更新时，用爬虫重新抓取：
 
 ```bash
-# 需要先安装 uv（ https://github.com/astral-sh/uv ）
+# 需要先安装 uv（https://github.com/astral-sh/uv）
 uv run nvidia_doc_sync/scrape_cuda_docs.py ptx
 uv run nvidia_doc_sync/scrape_cuda_docs.py cublas
 uv run nvidia_doc_sync/scrape_cuda_docs.py nccl
@@ -255,14 +273,14 @@ uv run nvidia_doc_sync/scrape_cuda_docs.py driver
 uv run nvidia_doc_sync/scrape_cuda_docs.py math
 ```
 
-`uv run` 会自动解析脚本头部的 PEP 723 依赖声明，无需单独 `pip install` ，也不需要 virtualenv 。
+`uv run` 会自动解析脚本头部的 PEP 723 依赖声明，无需单独 `pip install`，也不需要 virtualenv。
 
-### 6.3 装进 AI IDE
+### 6.4 装进 AI IDE
 
-你可以通过直接复制预构建的 Skill 目录，将整个自动化优化流水线集成到任何支持 Skill 机制的 AI IDE 中（如 TRAE 、 Qoder 、 Claude Code 等）：
+你可以通过直接复制预构建的 Skill 目录，将整个自动化优化流水线集成到任何支持 Skill 机制的 AI IDE 中（如 Trae、Qoder、Claude Code 等）：
 
 ```bash
-# 以 TRAE 为例，将所有 skill 复制到其 skills 目录
+# 以 Trae 为例，将所有 skill 复制到其 skills 目录
 cp -r skills/* ~/.trae/skills/
 
 # 对于 Qoder 或 Claude Code，请参考对应工具的路径进行复制
@@ -278,19 +296,19 @@ cp -r skills/* ~/.trae/skills/
 
 ### 7.1 为什么是单文件爬虫
 
-NVIDIA 的文档格式并不统一： PTX ISA 和 cuBLAS 是 Sphinx 生成的**单页巨型 HTML** ； Runtime API 、 Driver API 和 Math API 是 Doxygen 生成的**多页站点** ； NCCL 是 Sphinx 的**多页站点**。 `scrape_cuda_docs.py` 内部实现了三种 scraper 类，对外统一一个入口，子命令决定走哪条路径。
+NVIDIA 的文档格式并不统一：PTX ISA 和 cuBLAS 是 Sphinx 生成的**单页巨型 HTML**；Runtime API、Driver API 和 Math API 是 Doxygen 生成的**多页站点**；NCCL 是 Sphinx 的**多页站点**。`scrape_cuda_docs.py` 内部实现了三种 scraper 类，对外统一一个入口，子命令决定走哪条路径。
 
 ### 7.2 为什么做两阶段清洗
 
-API 文档（ Runtime / Driver / Math ）先下载原始 HTML 转 Markdown 存到 `*-raw/` 目录，再跑清洗 pass 去掉重复 TOC 、导航栏、冗余链接、版权声明，输出到最终目录。这样改清洗逻辑不需要重新下载——对于需要反复调整清洗规则的场景， `--skip-download` 可以把迭代时间从分钟级压到秒级。
+API 文档（Runtime / Driver / Math）先下载原始 HTML 转 Markdown 存到 `*-raw/` 目录，再跑清洗 pass 去掉重复 TOC、导航栏、冗余链接、版权声明，输出到最终目录。这样改清洗逻辑不需要重新下载——对于需要反复调整清洗规则的场景，`--skip-download` 可以把迭代时间从分钟级压到秒级。
 
 ### 7.3 渐进式 Skill 设计与多技能架构
 
-`SKILL.md` 只有 ~ 13KB ，里面是 API 概述、触发关键词和检索指引，不包含原始文档内容。 AI 用关键词命中 Skill 后，再通过文件路径按需读取具体参考文件，确保 Token 消耗可控。此外，将优化、生成、分析与基准测试拆分为独立的子技能，极大地降低了单一 Agent 的提示词复杂度，提高了任务执行的可靠性。
+`SKILL.md` 只有 ~13KB，里面是 API 概述、触发关键词和检索指引，不包含原始文档内容。AI 用关键词命中 Skill 后，再通过文件路径按需读取具体参考文件，确保 Token 消耗可控。此外，将优化、生成、分析与基准测试拆分为独立的子技能，极大地降低了单一 Agent 的提示词复杂度，提高了任务执行的可靠性。
 
 ### 7.4 可扩展架构
 
-想加一套新文档（比如 cutlass 、 NVML ）？只需识别文档格式，实现 scraper ，注册 CLI ，下载验证，写搜索指南，最后更新对应的 `SKILL.md` 即可。
+想加一套新文档（比如 cutlass、NVML）？只需识别文档格式，实现 scraper，注册 CLI，下载验证，写搜索指南，最后更新对应的 `SKILL.md` 即可。
 
 ---
 
